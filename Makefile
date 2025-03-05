@@ -7,6 +7,7 @@ OBJCPPFLAGS = $(CXXFLAGS) -ObjC++
 
 # SDL3 paths
 SDL3_INCLUDE = /opt/homebrew/Cellar/sdl3/3.2.8/include
+
 SDL3_LIB = /opt/homebrew/Cellar/sdl3/3.2.8/lib
 
 # Header directories
