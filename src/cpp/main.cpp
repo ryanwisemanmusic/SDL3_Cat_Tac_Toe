@@ -7,10 +7,7 @@ intenseive windowing required will require some major refactoring
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
-/*This should be the proper header location, despite it
-literally linking from a file perspective. I'll investigate
-this after class*/
-//#include <SDL3_image/SDL_image.h>
+#include <SDL3_image/SDL_image.h>
 
 extern "C" void cocoaBaseMenuBar();
 extern "C" void openSDLWindowAboutMenu();
