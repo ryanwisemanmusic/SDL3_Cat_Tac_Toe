@@ -6,7 +6,9 @@ intenseive windowing required will require some major refactoring
 */
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
+#include <SDL3/SDL_render.h>
 #include <string>
+#include <SDL3/SDL_surface.h>
 
 // Global variables
 SDL_Window* gWindow{ nullptr };
@@ -88,6 +90,16 @@ bool init()
             gScreenSurface = SDL_GetWindowSurface( gWindow );
         }
     }
+
+    return success;
+}
+
+bool loadColorBlue(SDL_Renderer* renderer)
+{
+    bool success{ true };
+
+    // Set the draw color to blue (R, G, B, A)
+    SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);  // Blue color with full opacity
 
     return success;
 }
