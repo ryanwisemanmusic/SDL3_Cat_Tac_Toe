@@ -23,7 +23,7 @@ HEADER = -isystem $(SDL3_INCLUDE) \
 # Library flags
 LIB_FLAGS = -L$(SDL3_LIB) -L$(SDL3_IMAGE_LIB) \
             -lSDL3 -lSDL3_image \
-            -framework Cocoa -lobjc
+            -framework Cocoa -lobjc -framework OpenGL  # Added OpenGL framework for macOS
 
 # Target and sources
 TARGET = AtaraxiaSDK
