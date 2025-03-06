@@ -32,29 +32,29 @@ Player currentPlayer = Player::X;
 bool init();
 void render();
 void handleEvents(bool& done);
-bool loadMedia();  // Unused; consider implementing or removing.
+// bool loadMedia();  // Unused; consider implementing or removing.
 void close();
-bool checkWin(Player player);
-void resetBoard();
+// bool checkWin(Player player);  // Commented out to avoid undefined symbols
+// void resetBoard();  // Commented out to avoid undefined symbols
 
 // Cocoa functions
 extern "C" void cocoaBaseMenuBar();
-extern "C" void openSDLWindowAboutMenu();
+// extern "C" void openSDLWindowAboutMenu();  // Commented out for now
 
 int main() {
-    // Move Cocoa initialization before SDL_Init
-    cocoaBaseMenuBar();
-
-    if (!init()) {
+    // First, initialize SDL and windowing.
+    if (!init()) {  
         SDL_Log("Unable to initialize program!\n");
         return 1;
     }
 
+    // Once SDL_Init() and window creation succeed, set up Cocoa.
+    cocoaBaseMenuBar();
+
     bool done = false;
     while (!done) {
-        handleEvents(done);
+        handleEvents(done);  // This will not be called due to being commented out
         render();
-        // Optional: SDL_Delay(1); // Minimal delay to avoid hogging the CPU.
     }
 
     close();
@@ -62,55 +62,70 @@ int main() {
 }
 
 bool init() {
-    // Initialize SDL video
+    // Initialize SDL video subsystem.
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-        SDL_Log("SDL could not initialize! SDL error: %s\n", SDL_GetError());
+        SDL_Log("SDL_Init failed: %s\n", SDL_GetError());
         return false;
     }
+    SDL_Log("SDL_Init succeeded.");
 
-    // Create window with SDL_WINDOW_OPENGL flag (required in SDL3)
-    gWindow = SDL_CreateWindow("SDL3 Tic-Tac-Toe", kScreenWidth, kScreenHeight, SDL_WINDOW_OPENGL);
+    // Create window without any additional flags.
+    gWindow = SDL_CreateWindow("SDL3 Tic-Tac-Toe", kScreenWidth, kScreenHeight, 0);
     if (!gWindow) {
-        SDL_Log("Window could not be created! SDL error: %s\n", SDL_GetError());
+        SDL_Log("SDL_CreateWindow failed: %s\n", SDL_GetError());
         SDL_Quit();
         return false;
     }
+    SDL_Log("Window created successfully.");
     SDL_SetWindowPosition(gWindow, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
-    // Create renderer with no extra flags (avoid SDL_RENDERER_ACCELERATION)
-    gRenderer = SDL_CreateRenderer(gWindow, 0);
-    if (!gRenderer) {
-        SDL_Log("Renderer could not be created! SDL error: %s\n", SDL_GetError());
+    // Create renderer using SDL3 properties.
+    SDL_PropertiesID rendererProps = SDL_CreateProperties();
+    if (!rendererProps) {
+        SDL_Log("SDL_CreateProperties failed: %s\n", SDL_GetError());
         SDL_DestroyWindow(gWindow);
         SDL_Quit();
         return false;
     }
+    // Tell the renderer which window to create for.
+    SDL_SetPointerProperty(rendererProps, SDL_PROP_RENDERER_CREATE_WINDOW_POINTER, gWindow);
+    gRenderer = SDL_CreateRendererWithProperties(rendererProps);
+    SDL_DestroyProperties(rendererProps);
+    if (!gRenderer) {
+        SDL_Log("SDL_CreateRendererWithProperties failed: %s\n", SDL_GetError());
+        SDL_DestroyWindow(gWindow);
+        SDL_Quit();
+        return false;
+    }
+    SDL_Log("Renderer created successfully.");
 
-    // Enable VSync manually in SDL3
+    // Enable VSync.
     if (SDL_SetRenderVSync(gRenderer, true) != 0) {
-        SDL_Log("Failed to enable VSync! SDL Error: %s\n", SDL_GetError());
+        SDL_Log("Failed to enable VSync: %s\n", SDL_GetError());
+    } else {
+        SDL_Log("VSync enabled successfully.");
     }
 
     return true;
 }
 
 void render() {
+    // Clear screen to white.
     SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 255);
     SDL_RenderClear(gRenderer);
 
-    // Draw grid lines
+    // Draw grid lines in black.
     SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 255);
     for (int i = 1; i < 3; ++i) {
         SDL_RenderLine(gRenderer, i * kCellSize, 0, i * kCellSize, kScreenHeight);
         SDL_RenderLine(gRenderer, 0, i * kCellSize, kScreenWidth, i * kCellSize);
     }
 
-    // Draw Xs and Os
+    // Draw Xs and Os.
     for (int row = 0; row < 3; ++row) {
         for (int col = 0; col < 3; ++col) {
             int x = col * kCellSize;
             int y = row * kCellSize;
-
             if (board[row][col] == Player::X) {
                 SDL_SetRenderDrawColor(gRenderer, 255, 0, 0, 255);  // Red for X
                 SDL_RenderLine(gRenderer, x + 20, y + 20, x + kCellSize - 20, y + kCellSize - 20);
@@ -128,6 +143,7 @@ void render() {
 }
 
 void handleEvents(bool& done) {
+    /* Optional: Event handling and game logic for later testing.
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_EVENT_QUIT) {
@@ -136,13 +152,9 @@ void handleEvents(bool& done) {
             int x = event.button.x / kCellSize;
             int y = event.button.y / kCellSize;
 
-            // Bounds checking to avoid out-of-range access.
             if (x >= 0 && x < 3 && y >= 0 && y < 3) {
-                // If the cell is empty, place current player's mark
                 if (board[y][x] == Player::NONE) {
                     board[y][x] = currentPlayer;
-
-                    // Check if current player wins
                     if (checkWin(currentPlayer)) {
                         SDL_Log("%s wins!", (currentPlayer == Player::X) ? "X" : "O");
                         SDL_Delay(1000);
@@ -154,10 +166,11 @@ void handleEvents(bool& done) {
             }
         }
     }
+    */
 }
 
 bool checkWin(Player player) {
-    // Check rows, columns, and diagonals
+    /* Optional: Game win checking logic for later testing
     for (int i = 0; i < 3; i++) {
         if ((board[i][0] == player && board[i][1] == player && board[i][2] == player) ||
             (board[0][i] == player && board[1][i] == player && board[2][i] == player)) {
@@ -166,13 +179,16 @@ bool checkWin(Player player) {
     }
     return (board[0][0] == player && board[1][1] == player && board[2][2] == player) ||
            (board[0][2] == player && board[1][1] == player && board[2][0] == player);
+    */
 }
 
 void resetBoard() {
+    /* Optional: Reset board logic for later testing
     for (auto& row : board) {
         row.fill(Player::NONE);
     }
     currentPlayer = Player::X;
+    */
 }
 
 void close() {
