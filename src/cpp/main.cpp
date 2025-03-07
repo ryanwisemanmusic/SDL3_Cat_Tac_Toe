@@ -5,6 +5,7 @@ This is a barebones approach to windowing via SDL3. Any
 intenseive windowing required will require some major refactoring
 */
 #include <SDL3/SDL.h>
+//#include <SDL3_tff/SDL_ttf.h> //It's in /usr/local
 #include <SDL3/SDL_main.h>
 #include <array>
 
@@ -109,8 +110,12 @@ void render()
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     for (int i = 1; i < 3; i++)
     {
-        SDL_RenderLine(renderer, i * SprightSize, 0, i * SprightSize, ScreenHeight);
-        SDL_RenderLine(renderer, 0, i * SprightSize, ScreenWidth, i * SprightSize);
+        SDL_RenderLine(
+            renderer, i * SprightSize, 0, 
+            i * SprightSize, ScreenHeight);
+        SDL_RenderLine(
+            renderer, 0, i * SprightSize, 
+            ScreenWidth, i * SprightSize);
     }
 
     for (int row = 0; row < 3; ++row)
@@ -123,8 +128,12 @@ void render()
             if (board[row][col] == Player::X)
             {
                 SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-                SDL_RenderLine(renderer, x + SprightSize - 20, y + 20, x + 20, y + SprightSize - 20);
-                SDL_RenderLine(renderer, x + SprightSize - 20, y + 20, x + 20, y + SprightSize - 20);
+                SDL_RenderLine(
+                    renderer, x + SprightSize - 20, 
+                    y + 20, x + 20, y + SprightSize - 20);
+                SDL_RenderLine(
+                    renderer, x + 20, y + 20, 
+                    x + SprightSize - 20, y + SprightSize - 20);
             }
             else if (board[row][col] == Player::O)
             {
