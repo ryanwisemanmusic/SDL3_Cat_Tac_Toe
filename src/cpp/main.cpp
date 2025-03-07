@@ -39,9 +39,6 @@ int main(int argc, char* argv[]) {
     (void)argc; 
     (void)argv; 
 
-    //SDL_Window *window;  
-    bool done = false;
-
     /* 
     It took me about 12 hours to fix the problem with my call to 
     bool init. So this is some good progress!!!!
@@ -54,19 +51,13 @@ int main(int argc, char* argv[]) {
     // Add Cocoa base menu bar
     cocoaBaseMenuBar();
 
-    // Main loop for window event handling
-    while (!done) {
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_EVENT_QUIT) {
-                done = true;
-            }
-        }
+    bool done = false;
 
-        SDL_Renderer* renderer = SDL_CreateRenderer(window, 0);
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_RenderClear(renderer);
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    // Main loop for window event handling
+    while (!done) 
+    {
+        handleEvents(done);
+        render();
     }
 
     // Cleanup
