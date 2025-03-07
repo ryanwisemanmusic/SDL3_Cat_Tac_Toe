@@ -5,7 +5,7 @@ This is a barebones approach to windowing via SDL3. Any
 intenseive windowing required will require some major refactoring
 */
 #include <SDL3/SDL.h>
-//#include <SDL3_tff/SDL_ttf.h> //It's in /usr/local
+#include <SDL3_ttf/SDL_ttf.h>
 #include <SDL3/SDL_main.h>
 #include <array>
 
