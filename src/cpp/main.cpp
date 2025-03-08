@@ -9,6 +9,7 @@ intenseive windowing required will require some major refactoring
 #include <SDL3/SDL_main.h>
 #include <array>
 
+//Global variables
 SDL_Window *window;
 SDL_Renderer *renderer;
 
@@ -16,17 +17,23 @@ constexpr int ScreenWidth = 600;
 constexpr int ScreenHeight = 600;
 constexpr int SprightSize = 200;
 
+TTF_Font* font = nullptr;
+
 enum class Player
 {
     NONE, X, O
 };
 
-
+//Player globals
 std::array<std::array<Player, 3>, 3> board{};
 Player Player1 = Player::X;
 Player Player2 = Player::O;
 
+int scorePlayer1 = 0;
+int scorePlayer2 = 0;
+
 //Function prototypes
+bool initSDL_ttf();
 bool init();
 void render();
 void handleEvents(bool& done);
@@ -48,6 +55,7 @@ int main(int argc, char* argv[]) {
         SDL_Log("Unable to initialize program!\n");
         return 1;
     }
+    
 
     // Add Cocoa base menu bar
     cocoaBaseMenuBar();
@@ -66,6 +74,20 @@ int main(int argc, char* argv[]) {
     SDL_Quit();
 
     return 0;
+}
+
+bool initSDL_ttf()
+{
+    TTF_Init();
+    font = TTF_OpenFont("assets/fonts/ArianaVioleta.ttf", 24);
+
+    if (!font)
+    {
+        SDL_Log("Cannot load font!");
+        return false;
+    }
+    
+    return true;
 }
 
 bool init()
@@ -150,6 +172,7 @@ void render()
         }
     }
 
+
     SDL_RenderPresent(renderer);
 }
 
@@ -221,6 +244,13 @@ void resetBoard()
 
 void close()
 {
+    if (font)
+    {
+        TTF_CloseFont(font);
+        font = nullptr;
+    }
+    
+    TTF_Quit();
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
