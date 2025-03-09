@@ -6,6 +6,7 @@ Author: Ryan Wiseman
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
 #include <SDL3/SDL_main.h>
+#include <SDL3_image/SDL_image.h>
 #include <sqlite3.h>
 #include <iostream>
 
@@ -13,6 +14,7 @@ Author: Ryan Wiseman
 
 //App headers
 #include "gameScores.h"
+#include "SDLColors.h"
 
 //Global variables
 SDL_Window *window;
