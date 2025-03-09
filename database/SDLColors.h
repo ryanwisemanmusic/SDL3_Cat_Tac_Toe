@@ -20,4 +20,69 @@ extern const SDL_Color cCyan_Light;
 extern const SDL_Color cCyan;
 extern const SDL_Color cWhite;
 
+//Custom Red
+extern const SDL_Color IndigenousRed;
+extern const SDL_Color LightCoral;
+extern const SDL_Color Salmon;
+extern const SDL_Color DarkSalmon;
+extern const SDL_Color LightSalmon;
+extern const SDL_Color Crimson;
+extern const SDL_Color FireBrick;
+extern const SDL_Color DarkRed;
+
+//Custom Pink
+extern const SDL_Color Pink;
+extern const SDL_Color LightPink;
+extern const SDL_Color HotPink;
+extern const SDL_Color DeepPink;
+extern const SDL_Color MediumVioletRed;
+extern const SDL_Color PaleVioletRed;
+
+//Custom Orange
+extern const SDL_Color orangeLightSalmon;
+extern const SDL_Color Coral;
+extern const SDL_Color Tomato;
+extern const SDL_Color OrangeRed;
+extern const SDL_Color DarkOrange;
+extern const SDL_Color Orange;
+
+//Custom Yellow
+extern const SDL_Color Gold;
+extern const SDL_Color LightYellow;
+extern const SDL_Color LemonChiffon;
+extern const SDL_Color LightGoldenrodYellow;
+extern const SDL_Color PapayaWhip;
+extern const SDL_Color Moccasin;
+extern const SDL_Color PeachPuff;
+extern const SDL_Color PaleGoldenrod;
+extern const SDL_Color Khaki;
+extern const SDL_Color Dark_Khaki;
+
+//Custom Purple
+extern const SDL_Color Lavender;
+extern const SDL_Color Thistle;
+extern const SDL_Color Plum;
+extern const SDL_Color Violet;
+extern const SDL_Color Orchid;
+extern const SDL_Color Fuchisa;
+extern const SDL_Color MediumOrchid;
+extern const SDL_Color RebeccaPurple;
+extern const SDL_Color BlueViolet;
+extern const SDL_Color DarkViolet;
+extern const SDL_Color DarkMagenta;
+extern const SDL_Color Purple;
+extern const SDL_Color Indigo;
+extern const SDL_Color SlateBlue;
+extern const SDL_Color DarkSlateBlue;
+extern const SDL_Color MediumSlateBlue;
+
+//Custom Green
+
+//Custom Blue
+
+//Custom Brown
+
+//Custom White
+
+//Custom Gray
 #endif
