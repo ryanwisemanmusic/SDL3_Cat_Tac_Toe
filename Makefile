@@ -17,6 +17,7 @@ SDL3_IMAGE_LIB := /opt/homebrew/Cellar/sdl3_image/3.2.4/lib
 SDL3_TTF_INCLUDE := /usr/local/include/SDL3_ttf
 SDL3_TTF_LIB := /usr/local/lib
 
+# SQLite paths
 SQLITE_INCLUDE := /opt/homebrew/Cellar/sqlite/3.49.1/include
 SQLITE_LIB := /opt/homebrew/Cellar/sqlite/3.49.1/lib
 
@@ -33,13 +34,13 @@ HEADER = -isystem $(SDL3_INCLUDE) \
 # Library flags
 LIB_FLAGS = -L$(SDL3_LIB) -L$(SDL3_IMAGE_LIB) -L$(SDL3_TTF_LIB) \
             -L$(SQLITE_LIB) \
-            -lSDL3 -lSDL3_image -lSDL3_ttf \
+            -lSDL3 -lSDL3_image -lSDL3_ttf -lsqlite3 \
             -framework Cocoa -lobjc -framework OpenGL  \
             -rpath /usr/local/lib 
 
 # Target and sources
 TARGET = AtaraxiaSDK
-SRC_CPP = src/cpp/main.cpp 
+SRC_CPP = src/cpp/main.cpp database/gameScores.cpp
 SRC_OBJC = src/objc/cocoaToolbarUI.mm
 
 # Object files
@@ -54,6 +55,9 @@ $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) $^ $(LIB_FLAGS) -o $@
 
 src/cpp/%.o: src/cpp/%.cpp
+	$(CXX) $(CXXFLAGS) $(HEADER) -c $< -o $@
+
+database/%.o: database/%.cpp
 	$(CXX) $(CXXFLAGS) $(HEADER) -c $< -o $@
 
 src/objc/%.o: src/objc/%.mm

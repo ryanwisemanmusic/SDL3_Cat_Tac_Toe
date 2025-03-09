@@ -35,3 +35,5 @@ AtaraxiaSDK
 assets/images/downwardspiral.png
 AtaraxiaSDK
 AtaraxiaSDK
+database/scoresDatabase.db
+*.db
