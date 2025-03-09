@@ -3,23 +3,62 @@ CXX = clang++
 
 # Compiler flags
 CXXFLAGS = -std=c++17 -Wall -Wextra -O2
-OBJCPPFLAGS = $(CXXFLAGS) -ObjC++
+OBJCPPFLAGS = $(CXXFLAGS)
 
-# SDL3 paths
-SDL3_INCLUDE := /opt/homebrew/Cellar/sdl3/3.2.8/include
-SDL3_LIB := /opt/homebrew/Cellar/sdl3/3.2.8/lib
+# Detect OS
+UNAME_S := $(shell uname -s)
 
-# SDL3_image paths
-SDL3_IMAGE_INCLUDE := /opt/homebrew/Cellar/sdl3_image/3.2.4/include
-SDL3_IMAGE_LIB := /opt/homebrew/Cellar/sdl3_image/3.2.4/lib
+ifeq ($(UNAME_S), Darwin)
+    # macOS paths
+    SDL3_INCLUDE := /opt/homebrew/Cellar/sdl3/3.2.8/include
+    SDL3_LIB := /opt/homebrew/Cellar/sdl3/3.2.8/lib
+    SDL3_IMAGE_INCLUDE := /opt/homebrew/Cellar/sdl3_image/3.2.4/include
+    SDL3_IMAGE_LIB := /opt/homebrew/Cellar/sdl3_image/3.2.4/lib
+    SDL3_TTF_INCLUDE := /usr/local/include/SDL3_ttf
+    SDL3_TTF_LIB := /usr/local/lib
+    SQLITE_INCLUDE := /opt/homebrew/Cellar/sqlite/3.49.1/include
+    SQLITE_LIB := /opt/homebrew/Cellar/sqlite/3.49.1/lib
 
-# SDL3_ttf paths
-SDL3_TTF_INCLUDE := /usr/local/include/SDL3_ttf
-SDL3_TTF_LIB := /usr/local/lib
+    # macOS-specific libraries
+    PLATFORM_LIBS = -framework Cocoa -framework OpenGL -lobjc
 
-# SQLite paths
-SQLITE_INCLUDE := /opt/homebrew/Cellar/sqlite/3.49.1/include
-SQLITE_LIB := /opt/homebrew/Cellar/sqlite/3.49.1/lib
+    # macOS-specific export path
+    EXPORT_LIB_PATH = export DYLD_LIBRARY_PATH="/usr/local/lib:$$DYLD_LIBRARY_PATH"
+else ifeq ($(UNAME_S), Linux)
+    # Linux paths
+    SDL3_INCLUDE := /usr/include/SDL3
+    SDL3_LIB := /usr/lib
+    SDL3_IMAGE_INCLUDE := /usr/include/SDL3_image
+    SDL3_IMAGE_LIB := /usr/lib
+    SDL3_TTF_INCLUDE := /usr/include/SDL3_ttf
+    SDL3_TTF_LIB := /usr/lib
+    SQLITE_INCLUDE := /usr/include
+    SQLITE_LIB := /usr/lib
+
+    # Linux-specific libraries
+    PLATFORM_LIBS = -lGL -ldl -lpthread -lm
+
+    # Linux-specific export path
+    EXPORT_LIB_PATH = export LD_LIBRARY_PATH="/usr/lib:$$LD_LIBRARY_PATH"
+else ifeq ($(findstring MINGW,$(UNAME_S)),MINGW)
+    # Windows paths (for MinGW or similar toolchain)
+    SDL3_INCLUDE := C:/SDL3/include
+    SDL3_LIB := C:/SDL3/lib
+    SDL3_IMAGE_INCLUDE := C:/SDL3_image/include
+    SDL3_IMAGE_LIB := C:/SDL3_image/lib
+    SDL3_TTF_INCLUDE := C:/SDL3_ttf/include
+    SDL3_TTF_LIB := C:/SDL3_ttf/lib
+    SQLITE_INCLUDE := C:/sqlite/include
+    SQLITE_LIB := C:/sqlite/lib
+
+    # Windows-specific libraries
+    PLATFORM_LIBS = -lSDL3 -lSDL3_image -lSDL3_ttf -lsqlite3 -lGL -lmingw32 -lSDL3main
+
+    # Windows-specific export path (MinGW uses the same approach)
+    EXPORT_LIB_PATH = set LIBRARY_PATH=%LIBRARY_PATH%;C:/SDL3/lib;C:/SDL3_image/lib;C:/SDL3_ttf/lib;C:/sqlite/lib
+else
+    $(error Unsupported platform)
+endif
 
 # Header directories
 HEADER = -isystem $(SDL3_INCLUDE) \
@@ -35,8 +74,8 @@ HEADER = -isystem $(SDL3_INCLUDE) \
 LIB_FLAGS = -L$(SDL3_LIB) -L$(SDL3_IMAGE_LIB) -L$(SDL3_TTF_LIB) \
             -L$(SQLITE_LIB) \
             -lSDL3 -lSDL3_image -lSDL3_ttf -lsqlite3 \
-            -framework Cocoa -lobjc -framework OpenGL  \
-            -rpath /usr/local/lib 
+            $(PLATFORM_LIBS) \
+            -rpath /usr/local/lib
 
 # Target and sources
 TARGET = AtaraxiaSDK
@@ -65,9 +104,24 @@ src/objc/%.o: src/objc/%.mm
 
 # Utilities
 run: $(TARGET)
-	export DYLD_LIBRARY_PATH="/usr/local/lib:$$DYLD_LIBRARY_PATH" && ./$(TARGET)
+	$(EXPORT_LIB_PATH) && ./$(TARGET)
 
 clean:
 	rm -f $(OBJS) $(TARGET)
 
-.PHONY: all clean run
+# Autodetect platform and run the corresponding build script
+platform-build:
+ifeq ($(UNAME_S), Darwin)
+	$(info Running macOS build script)
+	$(shell ./build.sh)
+else ifeq ($(UNAME_S), Linux)
+	$(info Running Linux build script)
+	$(shell ./build.sh)
+else ifeq ($(findstring MINGW,$(UNAME_S)),MINGW)
+	$(info Running Windows build script)
+	$(shell build.bat)
+else
+	$(error Unsupported platform)
+endif
+
+.PHONY: all clean run platform-build
