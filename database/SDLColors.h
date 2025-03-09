@@ -64,8 +64,8 @@ extern const SDL_Color Thistle;
 extern const SDL_Color Plum;
 extern const SDL_Color Violet;
 extern const SDL_Color Orchid;
-extern const SDL_Color Fuchisa;
 extern const SDL_Color MediumOrchid;
+extern const SDL_Color MediumPurple;
 extern const SDL_Color RebeccaPurple;
 extern const SDL_Color BlueViolet;
 extern const SDL_Color DarkViolet;
@@ -77,7 +77,28 @@ extern const SDL_Color DarkSlateBlue;
 extern const SDL_Color MediumSlateBlue;
 
 //Custom Green
-
+extern const SDL_Color GreenYellow;
+extern const SDL_Color Chartreuse;
+extern const SDL_Color LawnGreen;
+extern const SDL_Color LimeGreen;
+extern const SDL_Color PaleGreen;
+extern const SDL_Color LightGreen;
+extern const SDL_Color MediumSpringGreen;
+extern const SDL_Color SpringGreen;
+extern const SDL_Color MediumSeaGreen;
+extern const SDL_Color SeaGreen;
+extern const SDL_Color ForestGreen;
+extern const SDL_Color Green;
+extern const SDL_Color DarkGreen;
+extern const SDL_Color YellowGreen;
+extern const SDL_Color OliveDrab;
+extern const SDL_Color Olive;
+extern const SDL_Color DarkOliveGreen;
+extern const SDL_Color MediumAquamarine;
+extern const SDL_Color DarkSeaGreen;
+extern const SDL_Color LightSeaGreen;
+extern const SDL_Color DarkCyan;
+extern const SDL_Color Teal;
 //Custom Blue
 
 //Custom Brown

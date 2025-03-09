@@ -75,3 +75,27 @@ SDL_Color Indigo = {75, 0, 130, 255};
 SDL_Color SlateBlue = {106, 90, 205, 255};
 SDL_Color DarkSlateBlue = {72, 61, 139, 255};
 SDL_Color MediumSlateBlue = {123, 104, 238, 255};
+
+//Custom Green
+SDL_Color GreenYellow = {173, 255, 47, 255};
+SDL_Color Chartreuse = {127, 255, 0, 255};
+SDL_Color LawnGreen = {124, 252, 0, 255};
+SDL_Color LimeGreen = {50, 205, 50, 255};
+SDL_Color PaleGreen = {152, 251, 152, 255};
+SDL_Color LightGreen = {144, 238, 144, 255};
+SDL_Color MediumSpringGreen = {0, 250, 154, 255};
+SDL_Color SpringGreen = {0, 255, 127, 255};
+SDL_Color MediumSeaGreen = {60, 179, 113, 255};
+SDL_Color SeaGreen = {46, 139, 87, 255};
+SDL_Color ForestGreen = {34, 139, 34, 255};
+SDL_Color Green = {0, 128, 0, 255};
+SDL_Color DarkGreen = {0, 100, 0, 255};
+SDL_Color YellowGreen = {154, 205, 50, 255};
+SDL_Color OliveDrab = {107, 142, 35, 255};
+SDL_Color Olive = {128, 128, 0, 255};
+SDL_Color DarkOliveGreen = {85, 107, 47, 255};
+SDL_Color MediumAquamarine = {102, 205, 170, 255};
+SDL_Color DarkSeaGreen = {143, 188, 139, 255};
+SDL_Color LightSeaGreen = {32, 178, 170, 255};
+SDL_Color DarkCyan = {0, 139, 139, 255};
+SDL_Color Teal = {0, 128, 128, 255};
