@@ -22,7 +22,7 @@ class DatabaseManager
     void queryScores();
 
     bool insertTestScore(const std::string& player_name, int score);
-    int DatabaseManager::callback(void* NotUsed, int argc, char** argv, char** azColName);
+    int callback(void* NotUsed, int argc, char** argv, char** azColName);
 
     private:
     sqlite3* db;

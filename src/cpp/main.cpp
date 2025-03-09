@@ -1,13 +1,18 @@
 /*
 Author: Ryan Wiseman
-
-This is a barebones approach to windowing via SDL3. Any
-intenseive windowing required will require some major refactoring
 */
+
+//Library headers
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
 #include <SDL3/SDL_main.h>
+#include <sqlite3.h>
+#include <iostream>
+
 #include <array>
+
+//App headers
+#include "gameScores.h"
 
 //Global variables
 SDL_Window *window;
@@ -59,6 +64,7 @@ int main(int argc, char* argv[]) {
 
     // Add Cocoa base menu bar
     cocoaBaseMenuBar();
+
 
     bool done = false;
 
@@ -198,19 +204,63 @@ void handleEvents(bool& done)
 
                     if (checkWin(Player1))
                     {
-                        SDL_Log("%s wins!", 
-                        (Player1 == Player::X) ? "X" : "O");
+                        std::string winnerName = 
+                        (Player1 == Player::X) ? "Player 1" : "Player 2";
+                        SDL_Log("%s wins!", winnerName.c_str());
                         SDL_Delay(1000);
                         resetBoard();
+
+                        DatabaseManager dbManager("scoresDatabase.db");
+
+                        if (dbManager.insertTestScore(winnerName, 1)) 
+                        {
+                            std::cout << "Updated score for: " << 
+                            winnerName << " successfully!" << std::endl;
+                        }
+                        else
+                        {
+                            std::cerr << "Failed to update score for: " 
+                            << winnerName << std::endl;
+                        }
+
+                        std::cout << "Current scores in the database:" 
+                        << std::endl;
+                        dbManager.queryScores();
+                        return;
                     }
-                    else
+
+                    if (checkWin(Player2))
                     {
-                        Player1 = (Player1 == Player::X) ? 
-                        Player::O : Player::X;
-                    } 
-                } 
+                        std::string winnerName = 
+                        (Player2 == Player::O) ? "Player 1" : "Player 2";
+                        SDL_Log("%s wins!", winnerName.c_str());
+                        SDL_Delay(1000);
+                        resetBoard();
+
+                        DatabaseManager dbManager("scoresDatabase.db");
+
+                        if (dbManager.insertTestScore(winnerName, 1)) 
+                        {
+                            std::cout << "Updated score for: " << 
+                            winnerName << " successfully!" << std::endl;
+                        }
+                        else
+                        {
+                            std::cerr << "Failed to update score for: " 
+                            << winnerName << std::endl;
+                        }
+
+                        std::cout << "Current scores in the database:" 
+                        << std::endl;
+                        dbManager.queryScores();
+                        return;  
+                    }
+
+                    Player1 = (Player1 == Player::X) ? 
+                    Player::O : Player::X;
+                }
             }
-        }  
+        }
     }
 }
 

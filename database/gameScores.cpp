@@ -38,12 +38,10 @@ DatabaseManager::~DatabaseManager()
 
 bool DatabaseManager::executeSQL(const std::string &sql)
 {
-    char* errMsg = nullptr;
-    int rc = sqlite3_exec(db, sql.c_str(), nullptr, nullptr, &errMsg);
+    int rc = sqlite3_exec(db, sql.c_str(), nullptr, nullptr, nullptr);
     if (rc != SQLITE_OK)
     {
-        std::cerr << "SQL error: "<< errMsg << std::endl;
-        sqlite3_free(errMsg);
+        std::cerr << "SQL error: " << sqlite3_errmsg(db) << std::endl;
         return false;
     }
     return true;
@@ -52,7 +50,7 @@ bool DatabaseManager::executeSQL(const std::string &sql)
 bool DatabaseManager::insertTestScore(const std::string &player_name, int score)
 {
     std::string insertSQL = 
-    "INSERT INFO scores (player_name, score) VALUES('" + 
+    "INSERT INTO scores (player_name, score) VALUES('" + 
     player_name + "', " + std::to_string(score) + ");";
     return executeSQL(insertSQL);
 }
@@ -61,8 +59,6 @@ void DatabaseManager::queryScores()
 {
     const std::string querySQL = 
     "SELECT id, player_name, score, timestamp FROM scores;";
-
-    char* errMsg = nullptr;
     sqlite3_stmt* stmt;
     int rc = sqlite3_prepare_v2(db, querySQL.c_str(), -1, &stmt, 0);
     if (rc != SQLITE_OK)
@@ -94,6 +90,7 @@ void DatabaseManager::queryScores()
 
 int DatabaseManager::callback(void* NotUsed, int argc, char** argv, char** azColName)
 {
+    (void)NotUsed;
     for (int i = 0; i < argc; i++)
     {
         std::cout << azColName[i] << " = " << 
