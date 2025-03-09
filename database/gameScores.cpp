@@ -33,4 +33,74 @@ DatabaseManager::DatabaseManager(const std::string &dbFile)
 
 DatabaseManager::~DatabaseManager()
 {
+    sqlite3_close(db);
 }
+
+bool DatabaseManager::executeSQL(const std::string &sql)
+{
+    char* errMsg = nullptr;
+    int rc = sqlite3_exec(db, sql.c_str(), nullptr, nullptr, &errMsg);
+    if (rc != SQLITE_OK)
+    {
+        std::cerr << "SQL error: "<< errMsg << std::endl;
+        sqlite3_free(errMsg);
+        return false;
+    }
+    return true;
+}
+
+bool DatabaseManager::insertTestScore(const std::string &player_name, int score)
+{
+    std::string insertSQL = 
+    "INSERT INFO scores (player_name, score) VALUES('" + 
+    player_name + "', " + std::to_string(score) + ");";
+    return executeSQL(insertSQL);
+}
+
+void DatabaseManager::queryScores()
+{
+    const std::string querySQL = 
+    "SELECT id, player_name, score, timestamp FROM scores;";
+
+    char* errMsg = nullptr;
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(db, querySQL.c_str(), -1, &stmt, 0);
+    if (rc != SQLITE_OK)
+    {
+        std::cerr << "Failed to fetch data: " << 
+        sqlite3_errmsg(db) << std::endl;
+        return;
+    }
+
+    while ((rc = sqlite3_step(stmt)) == SQLITE_ROW)
+    {
+        int id = sqlite3_column_int(stmt, 0);
+        const char* player_name = 
+        reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        int score = sqlite3_column_int(stmt, 2);
+        const char* timestamp =
+        reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
+
+        std::cout << "ID: " << id << ", Player" << player_name <<
+        ", Score: " << score << ", Timestamp: " << timestamp << std::endl;
+    }
+    
+    if (rc != SQLITE_DONE)
+    {
+        std::cerr << "Execution failed: " << sqlite3_errmsg(db) << std::endl;
+    }
+    sqlite3_finalize(stmt);
+}
+
+int DatabaseManager::callback(void* NotUsed, int argc, char** argv, char** azColName)
+{
+    for (int i = 0; i < argc; i++)
+    {
+        std::cout << azColName[i] << " = " << 
+        (argv[i] ? argv[i]: "NULL") << std::endl;
+    }
+    return 0;
+
+}
+
+
