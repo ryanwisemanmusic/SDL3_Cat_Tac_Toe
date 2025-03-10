@@ -72,7 +72,6 @@ const SDL_Color Purple = {128, 0, 128, 255};
 const SDL_Color Indigo = {75, 0, 130, 255};
 const SDL_Color SlateBlue = {106, 90, 205, 255};
 const SDL_Color DarkSlateBlue = {72, 61, 139, 255};
-const SDL_Color MediumSlateBlue = {123, 104, 238, 255};
 
 // Custom Green Shades
 const SDL_Color GreenYellow = {173, 255, 47, 255};
@@ -97,3 +96,64 @@ const SDL_Color DarkSeaGreen = {143, 188, 139, 255};
 const SDL_Color LightSeaGreen = {32, 178, 170, 255};
 const SDL_Color DarkCyan = {0, 139, 139, 255};
 const SDL_Color Teal = {0, 128, 128, 255};
+
+//Custom Blue Shades
+const SDL_Color LightCyan = {224, 255, 255, 255};
+const SDL_Color PaleTurqoise = {175, 238, 238, 255};
+const SDL_Color Aquamarine = {127, 255, 212, 255};
+const SDL_Color Turquoise = {64, 224, 208, 255};
+const SDL_Color MediumTurquoise = {72, 209, 204, 255};
+const SDL_Color DarkTurquoise = {0, 206, 209, 255};
+const SDL_Color CadetBlue = {95, 158, 160, 255};
+const SDL_Color SteelBlue = {70, 130, 180, 255};
+const SDL_Color LightSteelBlue = {176, 196, 222, 255};
+const SDL_Color PowderBlue = {176, 224, 230, 255};
+const SDL_Color LightBlue = {173, 216, 230, 255};
+const SDL_Color SkyBlue = {135, 206, 235, 255};
+const SDL_Color LightSkyBlue = {135, 206, 250, 255};
+const SDL_Color DeepSkyBlue = {0, 191, 255, 255};
+const SDL_Color DodgerBlue = {30, 144, 255, 255};
+const SDL_Color CornflowerBlue = {100, 149, 237, 255};
+const SDL_Color MediumSlateBlue = {123, 104, 238, 255};
+const SDL_Color RoyalBlue = {65, 105, 255, 255};
+const SDL_Color MediumBlue = {0, 0, 205, 255};
+const SDL_Color DarkBlue = {0, 0, 139, 255};
+const SDL_Color Navy = {0, 0, 128, 255};
+const SDL_Color MidnightBlue = {25, 25, 112, 255};
+
+//Custom Brown Shades
+const SDL_Color Cornsilk = {255, 248, 220, 255};
+const SDL_Color BlanchedAlmond = {255, 235, 205, 255};
+const SDL_Color Bisque = {255, 228, 196, 255};
+const SDL_Color NavajoWhite = {255, 222, 173, 255};
+const SDL_Color Wheat = {245, 222, 179, 255};
+const SDL_Color BurlyWood = {222, 184, 135, 255};
+const SDL_Color Tan = {210, 180, 140, 255};
+const SDL_Color RosyBrown = {188, 143, 143, 255};
+const SDL_Color SandyBrown = {244, 164, 96, 255};
+const SDL_Color Goldenrod = {218, 165, 32, 255};
+const SDL_Color DarkGoldenrod = {184, 134, 11, 255};
+const SDL_Color Peru = {205, 133, 63, 255};
+const SDL_Color Chocolate = {210, 105, 30, 255};
+const SDL_Color SaddleBrown = {139, 69, 19, 255};
+const SDL_Color Sienna = {160, 82, 45, 255};
+const SDL_Color Brown = {165, 42, 42, 255};
+const SDL_Color Maroon = {128, 0, 0, 255};
+
+//Custom White Shades
+const SDL_Color Snow = {255, 250, 250, 255};
+const SDL_Color HoneyDew = {240, 255, 240, 255};
+const SDL_Color MintCream = {245, 255, 250, 255};
+const SDL_Color Azure = {240, 255, 255, 255};
+const SDL_Color AliceBlue = {240, 248, 255, 255};
+const SDL_Color GhostWhite = {248, 248, 255, 255};
+const SDL_Color WhiteSmoke = {245, 245, 245, 255};
+const SDL_Color SeaShell = {255, 245, 238, 255};
+const SDL_Color Beige = {245, 245, 220, 255};
+const SDL_Color OldLace = {253, 245, 230, 255};
+const SDL_Color FloralWhite = {255, 250, 240, 255};
+const SDL_Color Ivory = {255, 255, 240, 255};
+const SDL_Color AntiqueWhite = {250, 235, 215, 255};
+const SDL_Color Linen = {250, 240, 230, 255};
+const SDL_Color LavenderBlush = {255, 240, 245, 255};
+const SDL_Color MistyRose = {255, 228, 225, 255};
