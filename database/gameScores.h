@@ -15,16 +15,15 @@ struct ScoreEntry
 
 class DatabaseManager
 {
-    public:
+public:
     std::string dbFile;
     DatabaseManager(const std::string& dbFile);
     ~DatabaseManager();
+    
     void queryScores();
-
     bool insertTestScore(const std::string& player_name, int score);
-    int callback(void* NotUsed, int argc, char** argv, char** azColName);
 
-    private:
+private:
     sqlite3* db;
     bool executeSQL(const std::string& sql);
 };
