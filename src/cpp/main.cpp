@@ -40,9 +40,10 @@ int scorePlayer1 = 0;
 int scorePlayer2 = 0;
 
 //Function prototypes
-bool initSDL_ttf();
 bool init();
+bool initSDL_ttf();
 void render();
+void renderText(const char* message, int x, int y, SDL_Color color);
 void handleEvents(bool& done);
 bool checkWin(Player player);
 void resetBoard();
@@ -84,20 +85,6 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-bool initSDL_ttf()
-{
-    TTF_Init();
-    font = TTF_OpenFont("assets/fonts/ArianaVioleta.ttf", 24);
-
-    if (!font)
-    {
-        SDL_Log("Cannot load font!");
-        return false;
-    }
-    
-    return true;
-}
-
 bool init()
 {
     SDL_Init(SDL_INIT_VIDEO);
@@ -129,6 +116,25 @@ bool init()
         SDL_GetError());
     }
     */
+    return true;
+}
+
+bool initSDL_ttf()
+{
+    if (!TTF_Init()) {
+        SDL_Log("TTF_Init failed");
+        return false;
+    }
+
+    std::string fontPath = "assets/fonts/ArianaVioleta.ttf";
+
+    font = TTF_OpenFont(fontPath.c_str(), 20);
+    if (!font) 
+    {
+        SDL_Log("Cannot load font");
+        return false;
+    }
+
     return true;
 }
 
@@ -182,6 +188,40 @@ void render()
 
 
     SDL_RenderPresent(renderer);
+}
+
+void renderText(const char* message, int x, int y, SDL_Color color)
+{
+    
+    TTF_Init();
+    std::string fontPath = "assets/fonts/ArianaVioleta.ttf";
+
+    font = TTF_OpenFont(fontPath.c_str(), 50);
+    if (!font) 
+    {
+        SDL_Log("Cannot load font!");
+    }
+    size_t messageLength = strlen(message);
+
+    SDL_Surface* textSurface = TTF_RenderText_Solid(font, message, messageLength, color);
+
+    SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    int textW = textSurface->w; 
+    int textH = textSurface->h;
+    SDL_DestroySurface(textSurface);
+
+    if (!textTexture)
+    {
+        SDL_Log("Texture creation failed!");
+        return;
+    }
+
+    SDL_FRect destRect = { static_cast<float>(x), static_cast<float>(y), 
+                           static_cast<float>(textW), static_cast<float>(textH) };
+
+    SDL_RenderTexture(renderer, textTexture, nullptr, &destRect);
+
+    SDL_DestroyTexture(textTexture);
 }
 
 void handleEvents(bool& done)
