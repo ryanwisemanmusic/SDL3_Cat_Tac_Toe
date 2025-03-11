@@ -15,6 +15,7 @@ Author: Ryan Wiseman
 //App headers
 #include "gameScores.h"
 #include "SDLColors.h"
+#include "screenScenes.h"
 
 //Global variables
 SDL_Window *window;
@@ -39,6 +40,11 @@ Player Player2 = Player::O;
 int scorePlayer1 = 0;
 int scorePlayer2 = 0;
 
+int player1WinCount = 0;
+int player2WinCount = 0;
+
+SceneState currentScene = SceneState::MAIN_MENU;
+
 //Function prototypes
 bool init();
 bool initSDL_ttf();
@@ -52,28 +58,33 @@ void close();
 extern "C" void cocoaBaseMenuBar();
 
 int main(int argc, char* argv[]) {
-    (void)argc; 
-    (void)argv; 
+    (void)argc;
+    (void)argv;
 
-    /* 
-    It took me about 12 hours to fix the problem with my call to 
+    /*
+    It took me about 12 hours to fix the problem with my call to
     bool init. So this is some good progress!!!!
     */
     if (!init()) {
         SDL_Log("Unable to initialize program!\n");
         return 1;
     }
-    
 
     // Add Cocoa base menu bar
     cocoaBaseMenuBar();
 
-
     bool done = false;
 
+    SDL_Renderer* renderer = SDL_GetRenderer(window);
+    if (!renderer) {
+        SDL_Log("Failed to get renderer!\n");
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+
     // Main loop for window event handling
-    while (!done) 
-    {
+    while (!done) {
         handleEvents(done);
         render();
     }
@@ -143,49 +154,66 @@ void render()
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     SDL_RenderClear(renderer);
 
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    for (int i = 1; i < 3; i++)
+    if (currentScene == SceneState::MAIN_MENU)
     {
-        SDL_RenderLine(
-            renderer, i * SprightSize, 0, 
-            i * SprightSize, ScreenHeight);
-        SDL_RenderLine(
-            renderer, 0, i * SprightSize, 
-            ScreenWidth, i * SprightSize);
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        SDL_RenderFillRect(renderer, nullptr);
+        renderText(
+            "Cat Tac Toe", 225, 250, cMagenta);
     }
-
-    for (int row = 0; row < 3; ++row)
+    else if (currentScene == SceneState::GAME)
     {
-        for (int col = 0; col < 3; ++col)
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        for (int i = 1; i < 3; i++)
         {
-            int x = col * SprightSize;
-            int y = row * SprightSize;
+            SDL_RenderLine(
+                renderer, i * SprightSize, 0, 
+                i * SprightSize, ScreenHeight);
+            SDL_RenderLine(
+                renderer, 0, i * SprightSize, 
+                ScreenWidth, i * SprightSize);
+        }
 
-            if (board[row][col] == Player::X)
+        for (int row = 0; row < 3; ++row)
+        {
+            for (int col = 0; col < 3; ++col)
             {
-                SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-                SDL_RenderLine(
-                    renderer, x + SprightSize - 20, 
-                    y + 20, x + 20, y + SprightSize - 20);
-                SDL_RenderLine(
-                    renderer, x + 20, y + 20, 
-                    x + SprightSize - 20, y + SprightSize - 20);
-            }
-            else if (board[row][col] == Player::O)
-            {
-                SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
-                SDL_FRect rect 
+                int x = col * SprightSize;
+                int y = row * SprightSize;
+
+                if (board[row][col] == Player::X)
                 {
-                    static_cast<float>(x + 20), 
-                    static_cast<float>(y + 20),
-                    static_cast<float>(SprightSize - 40), 
-                    static_cast<float>(SprightSize - 40)
-                };
-                SDL_RenderRect(renderer, &rect);
+                    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+                    SDL_RenderLine(
+                        renderer, x + SprightSize - 20, 
+                        y + 20, x + 20, y + SprightSize - 20);
+                    SDL_RenderLine(
+                        renderer, x + 20, y + 20, 
+                        x + SprightSize - 20, y + SprightSize - 20);
+                }
+                else if (board[row][col] == Player::O)
+                {
+                    SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
+                    SDL_FRect rect {
+                        static_cast<float>(x + 20), 
+                        static_cast<float>(y + 20),
+                        static_cast<float>(SprightSize - 40), 
+                        static_cast<float>(SprightSize - 40)
+                    };
+                    SDL_RenderRect(renderer, &rect);
+                }
             }
         }
     }
-
+    else if (currentScene == SceneState::END_SCREEN)
+    {
+        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+        SDL_RenderFillRect(renderer, nullptr);
+        renderText(
+            "GAMEOVER", 200, 250, cMagenta);
+        renderText(
+            "Click to play again!", 175, 400, cMagenta);
+    }
 
     SDL_RenderPresent(renderer);
 }
@@ -203,9 +231,12 @@ void renderText(const char* message, int x, int y, SDL_Color color)
     }
     size_t messageLength = strlen(message);
 
-    SDL_Surface* textSurface = TTF_RenderText_Solid(font, message, messageLength, color);
+    SDL_Surface* textSurface = 
+    TTF_RenderText_Solid(font, message, messageLength, color);
 
-    SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    SDL_Texture* textTexture = 
+    SDL_CreateTextureFromSurface(renderer, textSurface);
+
     int textW = textSurface->w; 
     int textH = textSurface->h;
     SDL_DestroySurface(textSurface);
@@ -216,8 +247,11 @@ void renderText(const char* message, int x, int y, SDL_Color color)
         return;
     }
 
-    SDL_FRect destRect = { static_cast<float>(x), static_cast<float>(y), 
-                           static_cast<float>(textW), static_cast<float>(textH) };
+    SDL_FRect destRect = 
+    { 
+        static_cast<float>(x), static_cast<float>(y), 
+        static_cast<float>(textW), static_cast<float>(textH) 
+    };
 
     SDL_RenderTexture(renderer, textTexture, nullptr, &destRect);
 
@@ -235,76 +269,83 @@ void handleEvents(bool& done)
         }
         else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
         {
-            int x = event.button.x / SprightSize;
-            int y = event.button.y / SprightSize;
+            int x = event.button.x;
+            int y = event.button.y;
 
-            if (x >= 0 && x < 3 && y >= 0 && y < 3)
+            if (currentScene == SceneState::MAIN_MENU)
             {
-                if (board[y][x] == Player::NONE)
+                currentScene = SceneState::GAME;
+            }
+            else if (currentScene == SceneState::GAME)
+            {
+                if (x < 50 && y < 50) 
                 {
-                    board[y][x] = Player1;
-
-                    if (checkWin(Player1))
-                    {
-                        std::string winnerName = 
-                        (Player1 == Player::X) ? "Player 1" : "Player 2";
-                        SDL_Log("%s wins!", winnerName.c_str());
-                        SDL_Delay(1000);
-                        resetBoard();
-
-                        DatabaseManager dbManager("scoresDatabase.db");
-
-                        if (dbManager.insertTestScore(winnerName, 1)) 
-                        {
-                            std::cout << "Updated score for: " << 
-                            winnerName << " successfully!" << std::endl;
-                        }
-                        else
-                        {
-                            std::cerr << "Failed to update score for: " 
-                            << winnerName << std::endl;
-                        }
-
-                        std::cout << "Current scores in the database:" 
-                        << std::endl;
-                        dbManager.queryScores();
-                        return;
-                    }
-
-                    if (checkWin(Player2))
-                    {
-                        std::string winnerName = 
-                        (Player2 == Player::O) ? "Player 1" : "Player 2";
-                        SDL_Log("%s wins!", winnerName.c_str());
-                        SDL_Delay(1000);
-                        resetBoard();
-
-                        DatabaseManager dbManager("scoresDatabase.db");
-
-                        if (dbManager.insertTestScore(winnerName, 1)) 
-                        {
-                            std::cout << "Updated score for: " << 
-                            winnerName << " successfully!" << std::endl;
-                        }
-                        else
-                        {
-                            std::cerr << "Failed to update score for: " 
-                            << winnerName << std::endl;
-                        }
-
-                        std::cout << "Current scores in the database:" 
-                        << std::endl;
-                        dbManager.queryScores();
-                        return;  
-                    }
-
-                    Player1 = (Player1 == Player::X) ? 
-                    Player::O : Player::X;
+                    currentScene = SceneState::END_SCREEN;
+                    return;
                 }
+
+                int boardX = x / SprightSize;
+                int boardY = y / SprightSize;
+
+                if (boardX >= 0 && boardX < 3 && boardY >= 0 && boardY < 3)
+                {
+                    if (board[boardY][boardX] == Player::NONE)
+                    {
+                        board[boardY][boardX] = Player1;
+
+                        if (checkWin(Player1))
+                        {
+                            std::string winnerName = 
+                            (Player1 == Player::X) ? "Player 1" : "Player 2";
+                            SDL_Log("%s wins!", winnerName.c_str());
+                            SDL_Delay(1000);
+                            resetBoard();
+
+                            DatabaseManager dbManager("scoresDatabase.db");
+
+                            if (dbManager.insertTestScore(winnerName, 1)) 
+                            {
+                                if (Player1 == Player::X) 
+                                    ++player1WinCount;
+                                else 
+                                    ++player2WinCount;
+
+                                std::cout << "Updated score for: " << 
+                                winnerName << " successfully!" << std::endl;
+                            }
+                            else
+                            {
+                                std::cerr << "Failed to update score for: " << 
+                                winnerName << std::endl;
+                            }
+
+                            std::cout << "Current scores in the database:" << std::endl;
+                            dbManager.queryScores();
+
+                            if (player1WinCount >= 3 || player2WinCount >= 3)
+                            {
+                                currentScene = SceneState::END_SCREEN;
+                                return;
+                            }
+
+                            return;
+                        }
+
+                        Player1 = (Player1 == Player::X) ? Player::O : Player::X;
+                    }
+                }
+            }
+            else if (currentScene == SceneState::END_SCREEN)
+            {
+                // Reset game when returning to the main menu
+                player1WinCount = 0;
+                player2WinCount = 0;
+                currentScene = SceneState::MAIN_MENU;
             }
         }
     }
 }
+
 
 bool checkWin(Player player)
 {
