@@ -8,6 +8,7 @@
                 "/opt/homebrew/Cellar/sdl3_image/3.2.4/include",
                 "/usr/local/include",
                 "/opt/homebrew/Cellar/sqlite/3.49.1/include",
+                "/opt/homebrew/Cellar/ffmpeg/7.1.1_1/include",
                 "${workspaceFolder}/src/objc",
                 "${workspaceFolder}/database"
             ],

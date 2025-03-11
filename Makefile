@@ -10,14 +10,23 @@ UNAME_S := $(shell uname -s)
 
 ifeq ($(UNAME_S), Darwin)
     # macOS paths
+    #SDL3 Paths
     SDL3_INCLUDE := /opt/homebrew/Cellar/sdl3/3.2.8/include
     SDL3_LIB := /opt/homebrew/Cellar/sdl3/3.2.8/lib
     SDL3_IMAGE_INCLUDE := /opt/homebrew/Cellar/sdl3_image/3.2.4/include
     SDL3_IMAGE_LIB := /opt/homebrew/Cellar/sdl3_image/3.2.4/lib
+    #Third-party SDL3 Paths 
     SDL3_TTF_INCLUDE := /usr/local/include/SDL3_ttf
     SDL3_TTF_LIB := /usr/local/lib
+    SDL3_MIXER_INCLUDE := /usr/local/include/SDL3_mixer
+    SDL3_MIXER_LIB := /usr/local/lib
+    #SQLite Paths
     SQLITE_INCLUDE := /opt/homebrew/Cellar/sqlite/3.49.1/include
     SQLITE_LIB := /opt/homebrew/Cellar/sqlite/3.49.1/lib
+    # FFmpeg Paths
+    FFMPEG_INCLUDE := /opt/homebrew/Cellar/ffmpeg/7.1.1_1/include
+    FFMPEG_LIB := /opt/homebrew/Cellar/ffmpeg/7.1.1_1/lib
+    
 
     # macOS-specific libraries
     PLATFORM_LIBS = -framework Cocoa -framework OpenGL -lobjc
@@ -34,6 +43,8 @@ else ifeq ($(UNAME_S), Linux)
     SDL3_TTF_LIB := /usr/lib
     SQLITE_INCLUDE := /usr/include
     SQLITE_LIB := /usr/lib
+    FFMPEG_INCLUDE := /usr/include/FFmpeg
+    FFMPEG_LIB := /usr/lib
 
     # Linux-specific libraries
     PLATFORM_LIBS = -lGL -ldl -lpthread -lm
@@ -64,22 +75,29 @@ endif
 HEADER = -isystem $(SDL3_INCLUDE) \
          -I$(SDL3_IMAGE_INCLUDE) \
          -I$(SDL3_TTF_INCLUDE) \
+         -I$(SQLITE_INCLUDE) \
+         -I$(FFMPEG_INCLUDE) \
+         -I$(SDL3_MIXER_INCLUDE) \
          -Iinclude/cpp_headers \
          -Iinclude/objc_headers \
          -Isrc/objc \
-         -Idatabase \
-         -I$(SQLITE_INCLUDE)
+         -Idatabase
 
 # Library flags
 LIB_FLAGS = -L$(SDL3_LIB) -L$(SDL3_IMAGE_LIB) -L$(SDL3_TTF_LIB) \
-            -L$(SQLITE_LIB) \
+            -L$(SQLITE_LIB) -L$(FFMPEG_LIB) -L$(SDL3_MIXER_LIB) \
             -lSDL3 -lSDL3_image -lSDL3_ttf -lsqlite3 \
+            -lavcodec -lavformat -lavutil -lswscale -lswresample \
+            -lSDL3_mixer \
             $(PLATFORM_LIBS) \
             -rpath /usr/local/lib
 
 # Target and sources
 TARGET = AtaraxiaSDK
-SRC_CPP = src/cpp/main.cpp database/gameScores.cpp database/SDLColors.cpp
+SRC_CPP = src/cpp/main.cpp \
+          database/gameScores.cpp \
+          database/SDLColors.cpp \
+          src/cpp/videoRendering.cpp
 SRC_OBJC = src/objc/cocoaToolbarUI.mm
 
 # Object files
