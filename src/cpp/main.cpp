@@ -7,6 +7,9 @@ Author: Ryan Wiseman
 #include <SDL3_ttf/SDL_ttf.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3_image/SDL_image.h>
+#include <SDL3/SDL_video.h>
+#include <SDL3/SDL_surface.h>
+#include <SDL3/SDL_render.h>
 #include <sqlite3.h>
 #include <iostream>
 
@@ -16,6 +19,7 @@ Author: Ryan Wiseman
 #include "gameScores.h"
 #include "SDLColors.h"
 #include "screenScenes.h"
+#include "videoRendering.h"
 
 //Global variables
 SDL_Window *window;
@@ -48,8 +52,10 @@ SceneState currentScene = SceneState::MAIN_MENU;
 //Function prototypes
 bool init();
 bool initSDL_ttf();
+bool initMP4(const std::string &filename, VideoState &video);
 void render();
 void renderText(const char* message, int x, int y, SDL_Color color);
+SDL_Texture* getNextFrame(VideoState &video, SDL_Renderer* renderer);
 void handleEvents(bool& done);
 bool checkWin(Player player);
 void resetBoard();
@@ -58,9 +64,10 @@ void close();
 extern "C" void cocoaBaseMenuBar();
 
 int main(int argc, char* argv[]) {
+    
     (void)argc;
     (void)argv;
-
+    
     /*
     It took me about 12 hours to fix the problem with my call to
     bool init. So this is some good progress!!!!
@@ -149,6 +156,25 @@ bool initSDL_ttf()
     return true;
 }
 
+bool initMP4(const std::string &filename, VideoState &video)
+{
+    if (loadMP4(filename, video)) 
+    {
+        std::cout << "MP4 file loaded successfully: " << filename << std::endl;
+        std::cout << "Video Stream Index: " << video.videoStream << std::endl;
+        std::cout << "Codec: " << video.pCodec->name << std::endl;
+        std::cout << "Resolution: " << video.pCodecCtx->width << 
+                     "x" << video.pCodecCtx->height << std::endl;
+
+        return true;
+    }
+    else
+    {
+        std::cerr << "Failed to load MP4 file: " << filename << std::endl;
+        return false;
+    }
+}
+
 void render()
 {
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
@@ -207,13 +233,51 @@ void render()
     }
     else if (currentScene == SceneState::END_SCREEN)
     {
-        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
-        SDL_RenderFillRect(renderer, nullptr);
-        renderText(
-            "GAMEOVER", 200, 250, cMagenta);
-        renderText(
-            "Click to play again!", 175, 400, cMagenta);
+        static bool videoInitialized = false;
+        static VideoState video;
+        static SDL_Texture* videoTexture = nullptr; // Store last valid frame
+        static uint32_t lastFrameTime = 0; // Time of the last frame
+        static const int targetFPS = 30; // Example target FPS, replace with actual video FPS
+
+        if (!videoInitialized)
+        {
+            std::string mp4File = "assets/video/NeverGonna.mp4";
+            if (!initMP4(mp4File, video))
+            {
+                std::cerr << "Failed to initialize video\n";
+                return;
+            }
+            videoInitialized = true;
+        }
+
+        // Get the next frame, but only update if it's valid
+        SDL_Texture* nextFrame = getNextFrame(video, renderer);
+        if (nextFrame)
+        {
+            if (videoTexture) SDL_DestroyTexture(videoTexture); // Free old texture
+            videoTexture = nextFrame;
+        }
+
+        // Render the last valid frame
+        if (videoTexture)
+        {
+            SDL_RenderTexture(renderer, videoTexture, nullptr, nullptr); // Corrected to render the video frame
+        }
+
+        renderText("GAME OVER", 200, 250, cMagenta);
+        renderText("Click to play again!", 175, 400, cMagenta);
+
+        // Timing logic to control FPS
+        uint32_t currentTime = SDL_GetTicks();
+        uint32_t frameDelay = 1000 / targetFPS; // Calculate delay per frame
+        if (currentTime - lastFrameTime < frameDelay)
+        {
+            SDL_Delay(frameDelay - (currentTime - lastFrameTime)); // Delay to match target FPS
+        }
+        lastFrameTime = SDL_GetTicks(); // Update the last frame time
     }
+
+
 
     SDL_RenderPresent(renderer);
 }
@@ -256,6 +320,124 @@ void renderText(const char* message, int x, int y, SDL_Color color)
     SDL_RenderTexture(renderer, textTexture, nullptr, &destRect);
 
     SDL_DestroyTexture(textTexture);
+}
+
+SDL_Texture* getNextFrame(VideoState &video, SDL_Renderer* renderer)
+{
+    AVPacket packet;
+    AVFrame *frame = av_frame_alloc();
+
+    while (av_read_frame(video.pFormatCtx, &packet) >= 0)
+    {
+        if (packet.stream_index == video.videoStream)
+        {
+            avcodec_send_packet(video.pCodecCtx, &packet);
+            if (avcodec_receive_frame(video.pCodecCtx, frame) == 0)
+            {
+                // Allocate swsContext if needed
+                if (!video.swsCtx)
+                {
+                    video.swsCtx = sws_getContext(
+                        video.pCodecCtx->width, video.pCodecCtx->height,
+                        video.pCodecCtx->pix_fmt,
+                        video.pCodecCtx->width, video.pCodecCtx->height,
+                        AV_PIX_FMT_RGB24,
+                        SWS_BILINEAR, nullptr, nullptr, nullptr
+                    );
+                    if (!video.swsCtx)
+                    {
+                        std::cerr << "Failed to create SwsContext\n";
+                        av_frame_free(&frame);
+                        av_packet_unref(&packet);
+                        return nullptr;
+                    }
+                }
+
+                // Allocate frame buffer if needed
+                if (!video.pFrameRGB)
+                {
+                    video.pFrameRGB = av_frame_alloc();
+                    int numBytes = av_image_get_buffer_size(
+                        AV_PIX_FMT_RGB24, video.pCodecCtx->width,
+                        video.pCodecCtx->height, 1);
+                    if (numBytes < 0)
+                    {
+                        std::cerr << "Failed to calculate buffer size\n";
+                        av_frame_free(&frame);
+                        av_packet_unref(&packet);
+                        return nullptr;
+                    }
+                    video.buffer = (uint8_t*) av_malloc(numBytes * sizeof(uint8_t));
+                    if (!video.buffer)
+                    {
+                        std::cerr << "Failed to allocate buffer\n";
+                        av_frame_free(&frame);
+                        av_packet_unref(&packet);
+                        return nullptr;
+                    }
+                    av_image_fill_arrays(
+                        video.pFrameRGB->data, video.pFrameRGB->linesize,
+                        video.buffer, AV_PIX_FMT_RGB24,
+                        video.pCodecCtx->width, video.pCodecCtx->height, 1
+                    );
+                }
+
+                // Convert frame to RGB format
+                int ret = sws_scale(
+                    video.swsCtx, frame->data, frame->linesize,
+                    0, video.pCodecCtx->height,
+                    video.pFrameRGB->data, video.pFrameRGB->linesize
+                );
+                if (ret < 0)
+                {
+                    std::cerr << "sws_scale failed\n";
+                    av_frame_free(&frame);
+                    av_packet_unref(&packet);
+                    return nullptr;
+                }
+
+                // Create SDL_Surface
+                SDL_Surface* surface = SDL_CreateSurface(
+                    video.pCodecCtx->width,
+                    video.pCodecCtx->height,
+                    SDL_PIXELFORMAT_RGB24
+                );
+                if (!surface)
+                {
+                    std::cerr << "Failed to create SDL surface: " << SDL_GetError() << std::endl;
+                    av_frame_free(&frame);
+                    av_packet_unref(&packet);
+                    return nullptr;
+                }
+
+                // Copy pixel data line by line
+                uint8_t* srcData = video.pFrameRGB->data[0];
+                int srcPitch = video.pFrameRGB->linesize[0];
+                uint8_t* dstData = (uint8_t*)surface->pixels;
+                int dstPitch = surface->pitch;
+                int height = video.pCodecCtx->height;
+                int width = std::min(srcPitch, dstPitch); // Copy the minimum of both pitches
+
+                for (int y = 0; y < height; y++)
+                {
+                    memcpy(dstData + y * dstPitch, srcData + y * srcPitch, width);
+                }
+
+                // Convert Surface to Texture
+                SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+                SDL_DestroySurface(surface);
+
+                av_frame_free(&frame);
+                av_packet_unref(&packet);
+
+                return texture;
+            }
+        }
+        av_packet_unref(&packet);
+    }
+
+    av_frame_free(&frame);
+    return nullptr;
 }
 
 void handleEvents(bool& done)
@@ -341,6 +523,9 @@ void handleEvents(bool& done)
                 player1WinCount = 0;
                 player2WinCount = 0;
                 currentScene = SceneState::MAIN_MENU;
+
+                static bool videoInitialized = false; // Ensure this is declared as static in render()
+                videoInitialized = false;
             }
         }
     }
