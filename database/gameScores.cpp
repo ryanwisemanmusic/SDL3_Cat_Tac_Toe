@@ -2,7 +2,6 @@
 #include <iostream>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <cerrno>
 
 DatabaseManager::DatabaseManager(const std::string &dbFile)
 {

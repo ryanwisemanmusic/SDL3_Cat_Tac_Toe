@@ -10,6 +10,7 @@ Author: Ryan Wiseman
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_surface.h>
 #include <SDL3/SDL_render.h>
+#include <SDL3/SDL_audio.h>
 #include <sqlite3.h>
 #include <iostream>
 
@@ -21,9 +22,16 @@ Author: Ryan Wiseman
 #include "screenScenes.h"
 #include "videoRendering.h"
 
+extern "C" {
+    #include <libavcodec/avcodec.h>
+    #include <libavformat/avformat.h>
+    #include <libswscale/swscale.h>
+}
+
 //Global variables
 SDL_Window *window;
 SDL_Renderer *renderer;
+VideoState video;
 
 constexpr int ScreenWidth = 600;
 constexpr int ScreenHeight = 600;
@@ -49,13 +57,18 @@ int player2WinCount = 0;
 
 SceneState currentScene = SceneState::MAIN_MENU;
 
+//External calls
+bool decodeAndQueueAudio(VideoState &video);
+
 //Function prototypes
 bool init();
 bool initSDL_ttf();
+bool initAudio(VideoState &video);
 bool initMP4(const std::string &filename, VideoState &video);
 void render();
 void renderText(const char* message, int x, int y, SDL_Color color);
 SDL_Texture* getNextFrame(VideoState &video, SDL_Renderer* renderer);
+void audioCallback(void *userdata, Uint8 *stream, int len);
 void handleEvents(bool& done);
 bool checkWin(Player player);
 void resetBoard();
@@ -105,7 +118,7 @@ int main(int argc, char* argv[]) {
 
 bool init()
 {
-    SDL_Init(SDL_INIT_VIDEO);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
     
     window = SDL_CreateWindow(
         "SDL3 Cat-Tac-Toe", ScreenWidth,
@@ -175,6 +188,29 @@ bool initMP4(const std::string &filename, VideoState &video)
     }
 }
 
+bool initAudio(VideoState &video)
+{
+    SDL_AudioSpec wantedSpec;
+
+    // Define the desired audio format (16-bit stereo, 44.1 kHz, etc.)
+    wantedSpec.freq = 44100;
+    wantedSpec.format = SDL_AUDIO_S16;
+    wantedSpec.channels = 2;
+    // In SDL3, the callback and userdata members have been removed.
+    // You must use SDL_QueueAudio() to supply audio data instead.
+    std::cout << "Audio initialized" << std::endl;
+    // Open the audio device.
+    video.audioDevice = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &wantedSpec);
+    if (video.audioDevice == 0) {
+        SDL_Log("Error: Could not open audio device: ");
+        SDL_GetError();
+        return false;
+    }
+
+    SDL_PauseAudioDevice(video.audioDevice);
+    return true;
+}
+
 void render()
 {
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
@@ -184,20 +220,15 @@ void render()
     {
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
         SDL_RenderFillRect(renderer, nullptr);
-        renderText(
-            "Cat Tac Toe", 225, 250, cMagenta);
+        renderText("Cat Tac Toe", 225, 250, cMagenta);
     }
     else if (currentScene == SceneState::GAME)
     {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         for (int i = 1; i < 3; i++)
         {
-            SDL_RenderLine(
-                renderer, i * SprightSize, 0, 
-                i * SprightSize, ScreenHeight);
-            SDL_RenderLine(
-                renderer, 0, i * SprightSize, 
-                ScreenWidth, i * SprightSize);
+            SDL_RenderLine(renderer, i * SprightSize, 0, i * SprightSize, ScreenHeight);
+            SDL_RenderLine(renderer, 0, i * SprightSize, ScreenWidth, i * SprightSize);
         }
 
         for (int row = 0; row < 3; ++row)
@@ -210,12 +241,8 @@ void render()
                 if (board[row][col] == Player::X)
                 {
                     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
-                    SDL_RenderLine(
-                        renderer, x + SprightSize - 20, 
-                        y + 20, x + 20, y + SprightSize - 20);
-                    SDL_RenderLine(
-                        renderer, x + 20, y + 20, 
-                        x + SprightSize - 20, y + SprightSize - 20);
+                    SDL_RenderLine(renderer, x + SprightSize - 20, y + 20, x + 20, y + SprightSize - 20);
+                    SDL_RenderLine(renderer, x + 20, y + 20, x + SprightSize - 20, y + SprightSize - 20);
                 }
                 else if (board[row][col] == Player::O)
                 {
@@ -234,50 +261,73 @@ void render()
     else if (currentScene == SceneState::END_SCREEN)
     {
         static bool videoInitialized = false;
-        static VideoState video;
-        static SDL_Texture* videoTexture = nullptr; // Store last valid frame
-        static uint32_t lastFrameTime = 0; // Time of the last frame
-        static const int targetFPS = 30; // Example target FPS, replace with actual video FPS
-
+        static SDL_Texture* videoTexture = nullptr;
+        static uint32_t lastFrameTime = 0;
+        static double frameDelay = 33.33; // Default 30fps
+        
         if (!videoInitialized)
         {
             std::string mp4File = "assets/video/NeverGonna.mp4";
-            if (!initMP4(mp4File, video))
-            {
+            
+            // Initialize video first
+            if (!initMP4(mp4File, video)) {
                 std::cerr << "Failed to initialize video\n";
                 return;
             }
+            
+            // Calculate frame delay AFTER video initialization
+            if (video.pFormatCtx && video.videoStream >= 0) {
+                AVStream* stream = video.pFormatCtx->streams[video.videoStream];
+                if (stream->avg_frame_rate.den != 0) {
+                    frameDelay = 1000.0 * stream->avg_frame_rate.den / stream->avg_frame_rate.num;
+                }
+            }
+            
+            // Initialize audio components
+            if (!initAudio(video)) {
+                std::cerr << "Failed to initialize audio\n";
+                return;
+            }
+            
+            if (!loadAudio(mp4File, video)) {
+                std::cerr << "Failed to load audio\n";
+                return;
+            }
+            
+            if (!decodeAndQueueAudio(video)) {
+                std::cerr << "Failed to queue audio\n";
+                return;
+            }
+            
+            if (video.audioStream) {
+                SDL_BindAudioStream(video.audioDevice, video.audioStream);
+                SDL_PauseAudioDevice(video.audioDevice); // 0 = unpause
+            }
+
             videoInitialized = true;
+            SDL_PauseAudioDevice(video.audioDevice); // Start audio playback
         }
 
-        // Get the next frame, but only update if it's valid
-        SDL_Texture* nextFrame = getNextFrame(video, renderer);
-        if (nextFrame)
-        {
-            if (videoTexture) SDL_DestroyTexture(videoTexture); // Free old texture
-            videoTexture = nextFrame;
+        // Frame timing control
+        uint32_t currentTime = SDL_GetTicks();
+        if (currentTime - lastFrameTime >= frameDelay) {
+            SDL_Texture* nextFrame = getNextFrame(video, renderer);
+            if (nextFrame) {
+                if (videoTexture) SDL_DestroyTexture(videoTexture);
+                videoTexture = nextFrame;
+            }
+            lastFrameTime = currentTime;
         }
 
-        // Render the last valid frame
-        if (videoTexture)
-        {
-            SDL_RenderTexture(renderer, videoTexture, nullptr, nullptr); // Corrected to render the video frame
+        // Render video frame
+        if (videoTexture) {
+            SDL_RenderTexture(renderer, videoTexture, nullptr, nullptr);
         }
 
+        // Render text overlays
         renderText("GAME OVER", 200, 250, cMagenta);
         renderText("Click to play again!", 175, 400, cMagenta);
-
-        // Timing logic to control FPS
-        uint32_t currentTime = SDL_GetTicks();
-        uint32_t frameDelay = 1000 / targetFPS; // Calculate delay per frame
-        if (currentTime - lastFrameTime < frameDelay)
-        {
-            SDL_Delay(frameDelay - (currentTime - lastFrameTime)); // Delay to match target FPS
-        }
-        lastFrameTime = SDL_GetTicks(); // Update the last frame time
     }
-
-
 
     SDL_RenderPresent(renderer);
 }
@@ -322,8 +372,10 @@ void renderText(const char* message, int x, int y, SDL_Color color)
     SDL_DestroyTexture(textTexture);
 }
 
-SDL_Texture* getNextFrame(VideoState &video, SDL_Renderer* renderer)
+SDL_Texture* getNextFrame(VideoState &video, SDL_Renderer* renderer) 
 {
+    if (!video.pFormatCtx || !video.pCodecCtx) return nullptr;
+    
     AVPacket packet;
     AVFrame *frame = av_frame_alloc();
 
@@ -334,7 +386,6 @@ SDL_Texture* getNextFrame(VideoState &video, SDL_Renderer* renderer)
             avcodec_send_packet(video.pCodecCtx, &packet);
             if (avcodec_receive_frame(video.pCodecCtx, frame) == 0)
             {
-                // Allocate swsContext if needed
                 if (!video.swsCtx)
                 {
                     video.swsCtx = sws_getContext(
@@ -353,7 +404,6 @@ SDL_Texture* getNextFrame(VideoState &video, SDL_Renderer* renderer)
                     }
                 }
 
-                // Allocate frame buffer if needed
                 if (!video.pFrameRGB)
                 {
                     video.pFrameRGB = av_frame_alloc();
@@ -382,7 +432,6 @@ SDL_Texture* getNextFrame(VideoState &video, SDL_Renderer* renderer)
                     );
                 }
 
-                // Convert frame to RGB format
                 int ret = sws_scale(
                     video.swsCtx, frame->data, frame->linesize,
                     0, video.pCodecCtx->height,
@@ -519,16 +568,26 @@ void handleEvents(bool& done)
             }
             else if (currentScene == SceneState::END_SCREEN)
             {
-                // Reset game when returning to the main menu
                 player1WinCount = 0;
                 player2WinCount = 0;
                 currentScene = SceneState::MAIN_MENU;
 
-                static bool videoInitialized = false; // Ensure this is declared as static in render()
-                videoInitialized = false;
+                // Proper cleanup
+                avformat_close_input(&video.pFormatCtx);
+                avcodec_free_context(&video.pCodecCtx);
+                avcodec_free_context(&video.pAudioCodecCtx);
+                if (video.swsCtx) {
+                    sws_freeContext(video.swsCtx);
+                    video.swsCtx = nullptr;
+                }
+                if (video.audioStream) {
+                    SDL_DestroyAudioStream(video.audioStream);
+                    video.audioStream = nullptr;
+                }
+                SDL_CloseAudioDevice(video.audioDevice);
             }
-        }
     }
+}
 }
 
 

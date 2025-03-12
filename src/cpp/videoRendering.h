@@ -22,12 +22,14 @@ struct VideoState
     AVFrame *pFrameRGB = nullptr;
     SwsContext *swsCtx = nullptr;
     uint8_t *buffer = nullptr;  // Store RGB buffer
+    int audioStreamIndex = -1;
     int videoStream = -1;
-    //Audio Component
-    int audioStream = -1;
+    SDL_AudioStream* audioStream = nullptr;
+    
     AVCodecContext *pAudioCodecCtx = nullptr;
-    AVCodec *pAudioCodec = nullptr;
+    const AVCodec *pAudioCodec = nullptr;
     SDL_AudioDeviceID audioDevice = 0;
+    SDL_AudioSpec audioSpec;  // Add audioSpec here
 
     VideoState() : pFormatCtx(nullptr), pCodecCtx(nullptr), pCodec(nullptr),
                    pFrame(nullptr), pFrameRGB(nullptr), swsCtx(nullptr),
@@ -41,6 +43,8 @@ struct VideoState
         if (pCodecCtx) avcodec_free_context(&pCodecCtx);
         if (pFormatCtx) avformat_close_input(&pFormatCtx);
         if (swsCtx) sws_freeContext(swsCtx);
+        if (audioStream) SDL_DestroyAudioStream(audioStream);
+        if (pAudioCodecCtx) avcodec_free_context(&pAudioCodecCtx);
     }
 };
 

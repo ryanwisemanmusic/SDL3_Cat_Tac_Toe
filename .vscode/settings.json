@@ -2,6 +2,9 @@
     // other settings
     "github.copilot.editor.enableAutoCompletions": false,
     "files.associations": {
+        "*.sqlbook": "sql",
+        "*.ndjson": "jsonl",
+        "*.dbclient-js": "javascript",
         "__config": "cpp",
         "__debug": "cpp",
         "cstdint": "cpp",
@@ -63,7 +66,9 @@
         "concepts": "cpp",
         "memory": "cpp",
         "type_traits": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "iostream": "cpp",
+        "cerrno": "cpp"
     },
     // other settings
 }
