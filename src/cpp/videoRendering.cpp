@@ -141,7 +141,6 @@ bool loadAudioFile(const std::string &filename) {
         return false;
     }
     
-    // Process audio in smaller chunks
     Uint32 MAX_CHUNK_SIZE = 4096;
     Uint32 processedBytes = 0;
     
@@ -194,11 +193,50 @@ void playAudio() {
         SDL_Log("ERROR: Failed to bind audio stream: %s (Error code: %d)", SDL_GetError(), result);
         return;
     }
-
-    SDL_Log("Audio stream bound successfully, resuming playback.");
-    SDL_ResumeAudioDevice(audioDevice);
-    SDL_Log("Audio playback started.");
+    
 }
+
+//This can be used to explicitly call each SFX. Less modular than what I want
+//But it works
+void playSFX()
+{
+    SDL_Log("Inside playAudio() function");
+
+    std::string audioPath = "assets/audio/blip.wav";
+    SDL_Log("Reloading audio file: %s", audioPath.c_str());
+
+    if (!loadAudioFile(audioPath)) {
+        SDL_Log("ERROR: Failed to reload audio file.");
+        return;
+    }
+
+    SDL_Log("Audio file reloaded successfully, playing now...");
+
+    if (!audioDevice) {
+        SDL_Log("ERROR: No audio device available");
+        return;
+    }
+    
+    if (!audioStream) {
+        SDL_Log("ERROR: No audio stream available");
+        return;
+    }
+
+    SDL_Log("Flushing audio stream before binding...");
+    SDL_FlushAudioStream(audioStream);
+
+    SDL_Log("Binding audio stream to device %u", audioDevice);
+    
+    int result = SDL_BindAudioStream(audioDevice, audioStream);
+    if (result != 0) {
+        SDL_Log("ERROR: Failed to bind audio stream: %s (Error code: %d)", SDL_GetError(), result);
+        return;
+    }
+
+    SDL_Log("Audio should now be playing.");
+    cleanupAudio();
+}
+
 void cleanupAudio() {
     SDL_Log("Cleaning up audio resources");
     
@@ -246,7 +284,6 @@ bool testAudioPlayback() {
     playAudio();
     SDL_Log("TEST: Audio playback initiated");
     
-    // Keep the audio playing for a few seconds
     SDL_Log("TEST: Waiting for 5 seconds to let audio play...");
     SDL_Delay(5000);
     

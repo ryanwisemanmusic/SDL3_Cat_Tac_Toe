@@ -56,6 +56,7 @@ int player1WinCount = 0;
 int player2WinCount = 0;
 
 bool audioInitialized = false;
+bool newPlacementMade = false;
 
 SceneState currentScene = SceneState::MAIN_MENU;
 
@@ -63,6 +64,7 @@ SceneState currentScene = SceneState::MAIN_MENU;
 bool testAudioPlayback();
 bool loadAudioFile(const std::string &filename);
 void playAudio();
+void playSFX();
 void cleanupAudio();
 
 
@@ -213,7 +215,6 @@ void render()
     }
     else if (currentScene == SceneState::GAME)
     {
-        bool audioEvent01 = false;
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         for (int i = 1; i < 3; i++)
         {
@@ -233,24 +234,30 @@ void render()
                     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
                     SDL_RenderLine(renderer, x + SprightSize - 20, y + 20, x + 20, y + SprightSize - 20);
                     SDL_RenderLine(renderer, x + 20, y + 20, x + SprightSize - 20, y + SprightSize - 20);
-                    audioEvent01 = true;
-                    if (!audioInitialized && (audioEvent01 = true))
+                    if (!audioInitialized)
                     {
                         std::string audioPath = "assets/audio/blip.wav";
                         SDL_Log("Attempting to load audio from: %s", audioPath.c_str());
                         if (loadAudioFile(audioPath)) {
                             SDL_Log("Audio file loaded successfully, attempting playback...");
-                            playAudio();
                             audioInitialized = true;
-                            audioEvent01 = false;
-                        } else {
+                        } 
+                        else 
+                        {
                             SDL_Log("Failed to load audio file, proceeding without sound.");
                         }
+
                     }
+
+                    if (newPlacementMade && audioInitialized)
+                    {
+                        playSFX();
+                        newPlacementMade = false;
+                    }
+                    
                 }
                 else if (board[row][col] == Player::O)
                 {
-                    audioEvent01 = true;
                     SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255);
                     SDL_FRect rect {
                         static_cast<float>(x + 20), 
@@ -260,7 +267,7 @@ void render()
                         
                     };
                     SDL_RenderRect(renderer, &rect);
-                    if (!audioInitialized && (audioEvent01 = true))
+                    if (!audioInitialized)
                     {
                         std::string audioPath = "assets/audio/blip.wav";
                         SDL_Log("Attempting to load audio from: %s", audioPath.c_str());
@@ -268,12 +275,18 @@ void render()
                             SDL_Log("Audio file loaded successfully, attempting playback...");
                             playAudio();
                             audioInitialized = true;
-                            audioEvent01 = false;
-                            
-                        } else {
+                        } 
+                        else 
+                        {
                             SDL_Log("Failed to load audio file, proceeding without sound.");
                         }
-                        
+
+                    }
+
+                    if (newPlacementMade && audioInitialized)
+                    {
+                        playSFX();
+                        newPlacementMade = false;
                     }
                     
                 }
@@ -519,8 +532,6 @@ void handleEvents(bool& done)
         {
             int x = event.button.x;
             int y = event.button.y;
-            
-            cleanupAudio();
 
             if (currentScene == SceneState::MAIN_MENU)
             {
@@ -542,6 +553,7 @@ void handleEvents(bool& done)
                     if (board[boardY][boardX] == Player::NONE)
                     {
                         board[boardY][boardX] = Player1;
+                        newPlacementMade = true;
 
                         if (checkWin(Player1))
                         {
