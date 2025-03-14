@@ -1,7 +1,9 @@
 #include <iostream>
 #include <string>
+#include <cstdint>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_audio.h>
+#include <SDL3/SDL.h>
 #include <SDL3/SDL_render.h>
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_audio.h>
@@ -16,10 +18,11 @@ extern "C"
     #include <libswresample/swresample.h>
     #include <libavutil/channel_layout.h>
     #include <libswresample/swresample.h>
+#include <SDL3/SDL_oldnames.h>
 }
 
 #ifndef av_get_default_channel_layout
-static inline uint64_t av_get_default_channel_layout(int nb_channels) {
+static inline __attribute__((unused)) uint64_t av_get_default_channel_layout(int nb_channels) {
     switch(nb_channels) {
         case 1: return AV_CH_LAYOUT_MONO;
         case 2: return AV_CH_LAYOUT_STEREO;
@@ -31,6 +34,12 @@ static inline uint64_t av_get_default_channel_layout(int nb_channels) {
     }
 }
 #endif
+
+// Global variable for audio device
+SDL_AudioDeviceID audioDevice;
+SDL_AudioStream* audioStream = nullptr;
+Uint8* audioBuffer = nullptr;
+Uint32 audioLength = 0;
 
 bool loadMP4(const std::string &filename, VideoState &video)
 {
@@ -94,178 +103,155 @@ bool loadMP4(const std::string &filename, VideoState &video)
     return true;
 }
 
-bool loadAudio(const std::string &filename, VideoState &video)
-{
-    SDL_AudioSpec desiredSpec;
-    SDL_zero(desiredSpec);
-    desiredSpec.freq = 44100;              // Desired sample rate
-    desiredSpec.format = SDL_AUDIO_S16;      // Signed 16-bit format
-    desiredSpec.channels = 2;              // Stereo output
+bool loadAudioFile(const std::string &filename) {
+    SDL_AudioSpec wavSpec;
 
-    // Store the desired audio specification in VideoState.
-    video.audioSpec = desiredSpec;
+    cleanupAudio();
+    
+    SDL_Log("Attempting to load: %s", filename.c_str());
 
-    // Find the audio stream index.
-    for (unsigned i = 0; i < video.pFormatCtx->nb_streams; i++) {
-        if (video.pFormatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
-            video.audioStreamIndex = i;
-            break;
+    if (!SDL_LoadWAV(filename.c_str(), &wavSpec, &audioBuffer, &audioLength)) {
+        SDL_Log("Failed to load WAV file: %s", SDL_GetError());
+        return false;
+    }
+    
+    SDL_Log("WAV loaded - Format: %u, Channels: %u, Freq: %d, Size: %u bytes", 
+           wavSpec.format, wavSpec.channels, wavSpec.freq, audioLength);
+    
+    SDL_AudioSpec deviceSpec;
+    SDL_zero(deviceSpec);
+    deviceSpec.freq = wavSpec.freq;
+    deviceSpec.format = wavSpec.format;
+    deviceSpec.channels = wavSpec.channels;
+    
+    audioDevice = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &deviceSpec);
+    if (!audioDevice) {
+        SDL_Log("Failed to open audio device: %s", SDL_GetError());
+        SDL_free(audioBuffer);
+        audioBuffer = nullptr;
+        return false;
+    }
+    
+    audioStream = SDL_CreateAudioStream(&wavSpec, &deviceSpec);
+    if (!audioStream) {
+        SDL_Log("Failed to create audio stream: %s", SDL_GetError());
+        SDL_CloseAudioDevice(audioDevice);
+        SDL_free(audioBuffer);
+        audioBuffer = nullptr;
+        return false;
+    }
+    
+    // Process audio in smaller chunks
+    Uint32 MAX_CHUNK_SIZE = 4096;
+    Uint32 processedBytes = 0;
+    
+    while (processedBytes < audioLength) {
+        int chunkSize = (audioLength - processedBytes < MAX_CHUNK_SIZE) ? 
+                         audioLength - processedBytes : MAX_CHUNK_SIZE;
+        
+        int result = SDL_PutAudioStreamData(audioStream, 
+                                           audioBuffer + processedBytes, 
+                                           chunkSize);
+        
+        if (result < 0) {
+            SDL_Log("Error queueing audio chunk: %s", SDL_GetError());
+            SDL_DestroyAudioStream(audioStream);
+            audioStream = nullptr;
+            SDL_CloseAudioDevice(audioDevice);
+            SDL_free(audioBuffer);
+            audioBuffer = nullptr;
+            return false;
         }
+        
+        processedBytes += chunkSize;
     }
-    if (video.audioStreamIndex == -1) {
-        SDL_Log("Error: No audio stream found\n");
-        return false;
-    }
-
-    AVCodecParameters *pCodecParams = video.pFormatCtx->streams[video.audioStreamIndex]->codecpar;
-    video.pAudioCodec = avcodec_find_decoder(pCodecParams->codec_id);
-    if (!video.pAudioCodec) {
-        SDL_Log("Error: Unsupported audio codec\n");
-        return false;
-    }
-
-    video.pAudioCodecCtx = avcodec_alloc_context3(video.pAudioCodec);
-    if (avcodec_parameters_to_context(video.pAudioCodecCtx, pCodecParams) < 0) {
-        SDL_Log("Error: Could not copy audio codec parameters\n");
-        return false;
-    }
-    if (avcodec_open2(video.pAudioCodecCtx, video.pAudioCodec, nullptr) < 0) {
-        SDL_Log("Error: Could not open audio codec\n");
-        return false;
-    }
-
-    std::cout << "Successfully loaded audio: " << filename << std::endl;
+    
+    SDL_FlushAudioStream(audioStream);
     return true;
 }
 
-bool decodeAndQueueAudio(VideoState &video)
-{
-    AVPacket packet;
-    AVFrame* frame = av_frame_alloc();
-    bool audioQueued = false;
 
-    // Set up the desired SDL audio specification (S16, stereo, 44100 Hz).
-    SDL_AudioSpec desiredSpec = video.audioSpec;
-    desiredSpec.format   = SDL_AUDIO_S16;
-    desiredSpec.channels = 2;
-    desiredSpec.freq     = 44100;
+void playAudio() {
+    SDL_Log("Inside playAudio() function");
 
-    // Create a single SDL_AudioStream with explicit source and destination formats.
-    SDL_AudioStream* audioStream = SDL_CreateAudioStream(&desiredSpec, &desiredSpec);
+    if (!audioDevice) {
+        SDL_Log("ERROR: No audio device available");
+        return;
+    }
+    
     if (!audioStream) {
-         SDL_Log("SDL_CreateAudioStream error: %s", SDL_GetError());
-         av_frame_free(&frame);
-         return false;
+        SDL_Log("ERROR: No audio stream available");
+        return;
     }
 
-    // Loop over packets.
-    while (av_read_frame(video.pFormatCtx, &packet) >= 0)
-    {
-        if (packet.stream_index == video.audioStreamIndex)
-        {
-            if (avcodec_send_packet(video.pAudioCodecCtx, &packet) < 0) {
-                av_packet_unref(&packet);
-                continue;
-            }
-            
-            // Process all available decoded frames.
-            while (avcodec_receive_frame(video.pAudioCodecCtx, frame) >= 0)
-            {
-                int nb_samples    = frame->nb_samples;
-                if (nb_samples <= 0) continue;
-                int in_channels   = video.pAudioCodecCtx->ch_layout.nb_channels;
-                int in_sample_rate= video.pAudioCodecCtx->sample_rate;
-                enum AVSampleFormat in_format = video.pAudioCodecCtx->sample_fmt;
+    SDL_Log("Flushing audio stream before binding...");
+    SDL_FlushAudioStream(audioStream);
 
-                // Allocate and initialize the resampling context.
-                SwrContext *swrCtx = swr_alloc();
-                if (!swrCtx) {
-                    SDL_Log("Failed to allocate SwrContext");
-                    break;
-                }
-
-                // Set up destination and source channel layouts.
-                AVChannelLayout dst_layout;
-                av_channel_layout_default(&dst_layout, desiredSpec.channels);
-                AVChannelLayout src_layout;
-                av_channel_layout_default(&src_layout, in_channels);
-
-                // Configure the SwrContext.
-                if (swr_alloc_set_opts2(&swrCtx,
-                    &dst_layout,               // Destination layout pointer
-                    AV_SAMPLE_FMT_S16,         // Destination sample format
-                    desiredSpec.freq,          // Destination sample rate
-                    &src_layout,               // Source layout pointer
-                    in_format,                 // Source sample format
-                    in_sample_rate,            // Source sample rate
-                    0, nullptr) < 0)
-                {
-                    SDL_Log("Failed to set SwrContext options");
-                    swr_free(&swrCtx);
-                    break;
-                }
-
-                if (swr_init(swrCtx) < 0) {
-                    SDL_Log("Failed to initialize SwrContext: %s", SDL_GetError());
-                    swr_free(&swrCtx);
-                    break;
-                }
-
-                // Allocate a buffer for the converted (resampled) data.
-                // Use av_samples_alloc_array_and_samples to create an array of pointers.
-                uint8_t **dst_data = nullptr;
-                int dst_linesize = 0;
-                int ret = av_samples_alloc_array_and_samples(
-                    &dst_data, &dst_linesize, desiredSpec.channels,
-                    nb_samples, AV_SAMPLE_FMT_S16, 0);
-                if (ret < 0) {
-                    SDL_Log("Failed to allocate converted audio buffer");
-                    swr_free(&swrCtx);
-                    break;
-                }
-                
-                // Perform resampling.
-                int sampleCount = swr_convert(swrCtx, dst_data, nb_samples,
-                                              (const uint8_t**)frame->data, nb_samples);
-                if (sampleCount < 0) {
-                    SDL_Log("Error during resampling");
-                    av_freep(&dst_data[0]);
-                    av_freep(&dst_data);
-                    swr_free(&swrCtx);
-                    break;
-                }
-                
-                // Calculate the size in bytes of the converted data.
-                int convertedDataSize = sampleCount * desiredSpec.channels *
-                                         (SDL_AUDIO_BITSIZE(desiredSpec.format) / 8);
-                
-                // Queue the resampled audio data into the SDL audio stream.
-                if (!SDL_PutAudioStreamData(audioStream, dst_data[0], convertedDataSize)) {
-                    SDL_Log("SDL_PutAudioStreamData error: %s", SDL_GetError());
-                } else {
-                    audioQueued = true;
-                }
-                
-                // Clean up the conversion resources.
-                av_freep(&dst_data[0]);
-                av_freep(&dst_data);
-                swr_free(&swrCtx);
-                
-                if (audioQueued)
-                    break;
-            }
-        }
-        av_packet_unref(&packet);
-        if (audioQueued)
-            break;
+    SDL_Log("Binding audio stream to device %u", audioDevice);
+    
+    int result = SDL_BindAudioStream(audioDevice, audioStream);
+    if (result != 0) {
+        SDL_Log("ERROR: Failed to bind audio stream: %s (Error code: %d)", SDL_GetError(), result);
+        return;
     }
 
-    if (!SDL_FlushAudioStream(audioStream)) {
-         SDL_Log("SDL_FlushAudioStream error: %s", SDL_GetError());
+    SDL_Log("Audio stream bound successfully, resuming playback.");
+    SDL_ResumeAudioDevice(audioDevice);
+    SDL_Log("Audio playback started.");
+}
+void cleanupAudio() {
+    SDL_Log("Cleaning up audio resources");
+    
+    if (audioStream) {
+        SDL_Log("Destroying audio stream");
+        SDL_DestroyAudioStream(audioStream);
+        audioStream = nullptr;
     }
 
-    SDL_DestroyAudioStream(audioStream);
-    av_frame_free(&frame);
-    return audioQueued;
+    if (audioDevice) {
+        SDL_Log("Closing audio device %u", audioDevice);
+        SDL_CloseAudioDevice(audioDevice);
+        audioDevice = 0;
+    }
+
+    if (audioBuffer) {
+        SDL_Log("Freeing audio buffer");
+        SDL_free(audioBuffer);
+        audioBuffer = nullptr;
+    }
+    
+    SDL_Log("Audio cleanup complete");
 }
 
+bool testAudioPlayback() {
+    SDL_Log("===== TESTING AUDIO PLAYBACK =====");
+    
+    std::string audioPath = "assets/video/NeverGonna.wav";
+    SDL_Log("Testing audio file: %s", audioPath.c_str());
+    
+    SDL_IOStream* file = SDL_IOFromFile(audioPath.c_str(), "rb");
+    if (!file) {
+        SDL_Log("TEST FAILED: Audio file not found at: %s", audioPath.c_str());
+        return false;
+    }
+    SDL_CloseIO(file);
+    SDL_Log("TEST: File exists");
+    
+    if (!loadAudioFile(audioPath)) {
+        SDL_Log("TEST FAILED: Could not load audio file");
+        return false;
+    }
+    SDL_Log("TEST: Audio file loaded successfully");
+    
+    playAudio();
+    SDL_Log("TEST: Audio playback initiated");
+    
+    // Keep the audio playing for a few seconds
+    SDL_Log("TEST: Waiting for 5 seconds to let audio play...");
+    SDL_Delay(5000);
+    
+    cleanupAudio();
+    SDL_Log("TEST: Audio resources cleaned up");
+    
+    return true;
+}

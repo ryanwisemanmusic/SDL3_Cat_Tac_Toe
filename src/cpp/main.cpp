@@ -58,17 +58,20 @@ int player2WinCount = 0;
 SceneState currentScene = SceneState::MAIN_MENU;
 
 //External calls
-bool decodeAndQueueAudio(VideoState &video);
+bool testAudioPlayback();
+bool loadAudioFile(const std::string &filename);
+void playAudio();
+void cleanupAudio();
 
+
+static bool videoInitialized;
 //Function prototypes
 bool init();
-bool initSDL_ttf();
 bool initAudio(VideoState &video);
 bool initMP4(const std::string &filename, VideoState &video);
 void render();
 void renderText(const char* message, int x, int y, SDL_Color color);
 SDL_Texture* getNextFrame(VideoState &video, SDL_Renderer* renderer);
-void audioCallback(void *userdata, Uint8 *stream, int len);
 void handleEvents(bool& done);
 bool checkWin(Player player);
 void resetBoard();
@@ -92,6 +95,8 @@ int main(int argc, char* argv[]) {
 
     // Add Cocoa base menu bar
     cocoaBaseMenuBar();
+
+    //testAudioPlayback();
 
     bool done = false;
 
@@ -118,6 +123,7 @@ int main(int argc, char* argv[]) {
 
 bool init()
 {
+    TTF_Init();
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
     
     window = SDL_CreateWindow(
@@ -150,25 +156,6 @@ bool init()
     return true;
 }
 
-bool initSDL_ttf()
-{
-    if (!TTF_Init()) {
-        SDL_Log("TTF_Init failed");
-        return false;
-    }
-
-    std::string fontPath = "assets/fonts/ArianaVioleta.ttf";
-
-    font = TTF_OpenFont(fontPath.c_str(), 20);
-    if (!font) 
-    {
-        SDL_Log("Cannot load font");
-        return false;
-    }
-
-    return true;
-}
-
 bool initMP4(const std::string &filename, VideoState &video)
 {
     if (loadMP4(filename, video)) 
@@ -190,24 +177,24 @@ bool initMP4(const std::string &filename, VideoState &video)
 
 bool initAudio(VideoState &video)
 {
-    SDL_AudioSpec wantedSpec;
-
-    // Define the desired audio format (16-bit stereo, 44.1 kHz, etc.)
+    SDL_AudioSpec wantedSpec, obtainedSpec;
+    SDL_zero(wantedSpec); 
+    
     wantedSpec.freq = 44100;
     wantedSpec.format = SDL_AUDIO_S16;
     wantedSpec.channels = 2;
-    // In SDL3, the callback and userdata members have been removed.
-    // You must use SDL_QueueAudio() to supply audio data instead.
-    std::cout << "Audio initialized" << std::endl;
-    // Open the audio device.
+    
     video.audioDevice = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &wantedSpec);
+    
     if (video.audioDevice == 0) {
-        SDL_Log("Error: Could not open audio device: ");
-        SDL_GetError();
+        SDL_Log("Error: Could not open audio device: %s", SDL_GetError());
         return false;
     }
-
-    SDL_PauseAudioDevice(video.audioDevice);
+    
+    video.audioSpec = obtainedSpec;
+    
+    SDL_ResumeAudioDevice(video.audioDevice);
+    
     return true;
 }
 
@@ -259,83 +246,79 @@ void render()
         }
     }
     else if (currentScene == SceneState::END_SCREEN)
+{
+    static bool videoInitialized = false;
+    static bool audioInitialized = false;
+    static SDL_Texture* videoTexture = nullptr;
+    static uint32_t lastFrameTime = SDL_GetTicks();
+    static double videoAccumulator = 0.0;
+    static double frameDelay = 40.0; 
+
+    if (!videoInitialized)
     {
-        static bool videoInitialized = false;
-        static SDL_Texture* videoTexture = nullptr;
-        static uint32_t lastFrameTime = 0;
-        static double frameDelay = 33.33; // Default 30fps
-        
-        if (!videoInitialized)
-        {
-            std::string mp4File = "assets/video/NeverGonna.mp4";
-            
-            // Initialize video first
-            if (!initMP4(mp4File, video)) {
-                std::cerr << "Failed to initialize video\n";
-                return;
-            }
-            
-            // Calculate frame delay AFTER video initialization
-            if (video.pFormatCtx && video.videoStream >= 0) {
-                AVStream* stream = video.pFormatCtx->streams[video.videoStream];
-                if (stream->avg_frame_rate.den != 0) {
-                    frameDelay = 1000.0 * stream->avg_frame_rate.den / stream->avg_frame_rate.num;
-                }
-            }
-            
-            // Initialize audio components
-            if (!initAudio(video)) {
-                std::cerr << "Failed to initialize audio\n";
-                return;
-            }
-            
-            if (!loadAudio(mp4File, video)) {
-                std::cerr << "Failed to load audio\n";
-                return;
-            }
-            
-            if (!decodeAndQueueAudio(video)) {
-                std::cerr << "Failed to queue audio\n";
-                return;
-            }
-            
-            if (video.audioStream) {
-                SDL_BindAudioStream(video.audioDevice, video.audioStream);
-                SDL_PauseAudioDevice(video.audioDevice); // 0 = unpause
-            }
-
-            videoInitialized = true;
-            SDL_PauseAudioDevice(video.audioDevice); // Start audio playback
+        std::string mp4File = "assets/video/NeverGonna.mp4";
+        if (!initMP4(mp4File, video)) {
+            SDL_Log("Failed to initialize video");
+            currentScene = SceneState::MAIN_MENU;
+            return;
         }
-
-        // Frame timing control
-        uint32_t currentTime = SDL_GetTicks();
-        if (currentTime - lastFrameTime >= frameDelay) {
-            SDL_Texture* nextFrame = getNextFrame(video, renderer);
-            if (nextFrame) {
-                if (videoTexture) SDL_DestroyTexture(videoTexture);
-                videoTexture = nextFrame;
+        if (video.pFormatCtx && video.videoStream >= 0) {
+            AVStream* stream = video.pFormatCtx->streams[video.videoStream];
+            if (stream->avg_frame_rate.den != 0 && stream->avg_frame_rate.num != 0) {
+                frameDelay = (1000.0 * stream->avg_frame_rate.den) / stream->avg_frame_rate.num;
+                SDL_Log("Updated Video Frame Delay: %.6f ms", frameDelay);
             }
-            lastFrameTime = currentTime;
         }
-
-        // Render video frame
-        if (videoTexture) {
-            SDL_RenderTexture(renderer, videoTexture, nullptr, nullptr);
-        }
-
-        // Render text overlays
-        renderText("GAME OVER", 200, 250, cMagenta);
-        renderText("Click to play again!", 175, 400, cMagenta);
+        lastFrameTime = SDL_GetTicks();
+        videoAccumulator = 0.0;
+        videoInitialized = true;
     }
-
+    
+    if (!audioInitialized)
+    {
+        std::string audioPath = "assets/video/NeverGonna.wav";
+        SDL_Log("Attempting to load audio from: %s", audioPath.c_str());
+        if (loadAudioFile(audioPath)) {
+            SDL_Log("Audio file loaded successfully, attempting playback...");
+            playAudio();
+            audioInitialized = true;
+        } else {
+            SDL_Log("Failed to load audio file, proceeding without sound.");
+        }
+    }
+    
+    uint32_t currentTime = SDL_GetTicks();
+    double deltaTime = static_cast<double>(currentTime - lastFrameTime);
+    lastFrameTime = currentTime;
+    videoAccumulator += deltaTime;
+    
+    if (videoAccumulator >= frameDelay)
+    {
+        SDL_Texture* nextFrame = getNextFrame(video, renderer);
+        if (nextFrame)
+        {
+            if (videoTexture) {
+                SDL_DestroyTexture(videoTexture);
+            }
+            videoTexture = nextFrame;
+        }
+        videoAccumulator -= frameDelay;
+    }
+    
+    if (videoTexture) {
+        SDL_RenderTexture(renderer, videoTexture, nullptr, nullptr);
+    } else {
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderFillRect(renderer, nullptr);
+    }
+}
+    
     SDL_RenderPresent(renderer);
 }
 
 void renderText(const char* message, int x, int y, SDL_Color color)
 {
     
-    TTF_Init();
     std::string fontPath = "assets/fonts/ArianaVioleta.ttf";
 
     font = TTF_OpenFont(fontPath.c_str(), 50);
@@ -459,13 +442,12 @@ SDL_Texture* getNextFrame(VideoState &video, SDL_Renderer* renderer)
                     return nullptr;
                 }
 
-                // Copy pixel data line by line
                 uint8_t* srcData = video.pFrameRGB->data[0];
                 int srcPitch = video.pFrameRGB->linesize[0];
                 uint8_t* dstData = (uint8_t*)surface->pixels;
                 int dstPitch = surface->pitch;
                 int height = video.pCodecCtx->height;
-                int width = std::min(srcPitch, dstPitch); // Copy the minimum of both pitches
+                int width = std::min(srcPitch, dstPitch);
 
                 for (int y = 0; y < height; y++)
                 {
@@ -570,26 +552,44 @@ void handleEvents(bool& done)
             {
                 player1WinCount = 0;
                 player2WinCount = 0;
-                currentScene = SceneState::MAIN_MENU;
+                
+                cleanupAudio();
+                
+                if (video.pFrameRGB) {
+                    av_frame_free(&video.pFrameRGB);
+                    video.pFrameRGB = nullptr;
+                }
 
-                // Proper cleanup
-                avformat_close_input(&video.pFormatCtx);
-                avcodec_free_context(&video.pCodecCtx);
-                avcodec_free_context(&video.pAudioCodecCtx);
+                if (video.buffer) {
+                    av_free(video.buffer);
+                    video.buffer = nullptr;
+                }
+
                 if (video.swsCtx) {
                     sws_freeContext(video.swsCtx);
                     video.swsCtx = nullptr;
                 }
-                if (video.audioStream) {
-                    SDL_DestroyAudioStream(video.audioStream);
-                    video.audioStream = nullptr;
+
+                if (video.pAudioCodecCtx) {
+                    avcodec_free_context(&video.pAudioCodecCtx);
                 }
-                SDL_CloseAudioDevice(video.audioDevice);
+
+                if (video.pCodecCtx) {
+                    avcodec_free_context(&video.pCodecCtx);
+                }
+
+                if (video.pFormatCtx) {
+                    avformat_close_input(&video.pFormatCtx);
+                }
+
+                videoInitialized = false;
+                currentScene = SceneState::MAIN_MENU;
             }
+
+
+        }
     }
 }
-}
-
 
 bool checkWin(Player player)
 {
@@ -621,13 +621,15 @@ void resetBoard()
 
 void close()
 {
-    if (font)
-    {
+    cleanupAudio();
+    
+    if (font) {
         TTF_CloseFont(font);
         font = nullptr;
     }
     
     TTF_Quit();
+
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
