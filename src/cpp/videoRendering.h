@@ -61,5 +61,6 @@ bool loadMP4(const std::string &filename, VideoState &video);
 bool loadAudioFile(const std::string &filename);
 void playAudio();
 void cleanupAudio();
+void playSFX();
 
 #endif
