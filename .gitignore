@@ -39,3 +39,4 @@ database/scoresDatabase.db
 *.db
 *.db
 *.mp4
+*.wav
