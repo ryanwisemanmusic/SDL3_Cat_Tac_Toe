@@ -150,13 +150,13 @@ bool init()
         SDL_Quit();
         return false;
     }
-    /*
-    if (SDL_SetRenderVSync(renderer, true) != 0)
+
+    std::string fontPath = "assets/fonts/ArianaVioleta.ttf";
+    font = TTF_OpenFont(fontPath.c_str(), 50);
+    if (!font)
     {
-        SDL_Log("Failed to enable VSync! SDL: Error %s\n",
-        SDL_GetError());
+        SDL_Log("Cannot load font!");
     }
-    */
     return true;
 }
 
@@ -300,11 +300,11 @@ void render()
     static SDL_Texture* videoTexture = nullptr;
     static uint32_t lastFrameTime = SDL_GetTicks();
     static double videoAccumulator = 0.0;
-    static double frameDelay = 40.0; 
+    static double frameDelay = 33.333333333333333; 
 
     if (!videoInitialized)
     {
-        std::string mp4File = "assets/video/NeverGonna.mp4";
+        std::string mp4File = "assets/video/CatSpin.mp4";
         if (!initMP4(mp4File, video)) {
             SDL_Log("Failed to initialize video");
             currentScene = SceneState::MAIN_MENU;
@@ -324,7 +324,7 @@ void render()
     
     if (!audioInitialized)
     {
-        std::string audioPath = "assets/video/NeverGonna.wav";
+        std::string audioPath = "assets/video/CatSpin.wav";
         SDL_Log("Attempting to load audio from: %s", audioPath.c_str());
         if (loadAudioFile(audioPath)) {
             SDL_Log("Audio file loaded successfully, attempting playback...");
@@ -359,6 +359,10 @@ void render()
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderFillRect(renderer, nullptr);
     }
+
+    renderText("GAMEOVER", 180, 100, cMagenta);
+    renderText("Click to Return To Main Menu", 100, 400, cMagenta);
+
 }
     
     SDL_RenderPresent(renderer);
@@ -366,10 +370,6 @@ void render()
 
 void renderText(const char* message, int x, int y, SDL_Color color)
 {
-    
-    std::string fontPath = "assets/fonts/ArianaVioleta.ttf";
-
-    font = TTF_OpenFont(fontPath.c_str(), 50);
     if (!font) 
     {
         SDL_Log("Cannot load font!");
