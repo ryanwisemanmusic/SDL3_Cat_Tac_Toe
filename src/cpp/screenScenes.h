@@ -5,10 +5,12 @@ enum class SceneState
 {
     MAIN_MENU,
     GAME,
-    END_SCREEN
+    END_SCREEN,
+    LEADERBOARD
 };
 
 // Function declarations for scene handling
 void handleMainMenu(SDL_Renderer* renderer, SceneState& currentScene);
 void handleGame(SDL_Renderer* renderer, SceneState& currentScene);
 void handleEndScreen(SDL_Renderer* renderer, SceneState& currentScene);
+void handleLeaderboardScreen(SDL_Renderer* renderer, SceneState& currentScene);
