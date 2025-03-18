@@ -3,9 +3,13 @@
 #include <cstdint>
 
 #include "buttonTasks.h"
+extern TTF_Font* font;
 
 void drawButton(SDL_Renderer *renderer, const Button *button) 
 {
+    SDL_Color prevColor;
+    SDL_GetRenderDrawColor(renderer, &prevColor.r, &prevColor.g, &prevColor.b, &prevColor.a);
+
     SDL_FRect rect = { 
         static_cast<float>(button->rect.x), 
         static_cast<float>(button->rect.y), 
@@ -15,10 +19,11 @@ void drawButton(SDL_Renderer *renderer, const Button *button)
     SDL_SetRenderDrawColor(renderer, button->color.r, 
         button->color.g, button->color.b, button->color.a);
     SDL_RenderFillRect(renderer, &rect);
+
+    SDL_SetRenderDrawColor(renderer, prevColor.r, prevColor.g, prevColor.b, prevColor.a);
 }
 
-void processButtonEvents(
-    SDL_Event *event, Button *button, SDL_Renderer *renderer) 
+void processButtonEvents(SDL_Event *event, Button *button)
 {
     if (event->type == 
         SDL_EVENT_MOUSE_BUTTON_DOWN && event->button.button 
