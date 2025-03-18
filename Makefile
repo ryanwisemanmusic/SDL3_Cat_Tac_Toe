@@ -97,7 +97,8 @@ TARGET = AtaraxiaSDK
 SRC_CPP = src/cpp/main.cpp \
           database/gameScores.cpp \
           database/SDLColors.cpp \
-          src/cpp/videoRendering.cpp
+          src/cpp/videoRendering.cpp \
+          src/cpp/buttonTasks.cpp
 SRC_OBJC = src/objc/cocoaToolbarUI.mm
 
 # Object files
