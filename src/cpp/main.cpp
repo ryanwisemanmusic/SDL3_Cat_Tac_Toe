@@ -21,6 +21,7 @@ Author: Ryan Wiseman
 #include "SDLColors.h"
 #include "screenScenes.h"
 #include "videoRendering.h"
+#include "buttonTasks.h"
 
 extern "C" {
     #include <libavcodec/avcodec.h>
@@ -31,13 +32,12 @@ extern "C" {
 //Global variables
 SDL_Window *window;
 SDL_Renderer *renderer;
+TTF_Font* font;
 VideoState video;
 
 constexpr int ScreenWidth = 600;
 constexpr int ScreenHeight = 600;
 constexpr int SprightSize = 200;
-
-TTF_Font* font = nullptr;
 
 enum class Player
 {
@@ -58,6 +58,8 @@ int player2WinCount = 0;
 bool audioInitialized = false;
 bool newPlacementMade = false;
 
+Button startButton;
+
 SceneState currentScene = SceneState::MAIN_MENU;
 
 //External calls
@@ -66,6 +68,9 @@ bool loadAudioFile(const std::string &filename);
 void playAudio();
 void playSFX();
 void cleanupAudio();
+void drawButton(SDL_Renderer *renderer, const Button *button);
+void processButtonEvents(SDL_Event* event, Button* button);
+void renderButtonText(const char* message, int x, int y, SDL_Color color);
 
 
 static bool videoInitialized;
@@ -78,6 +83,7 @@ void renderText(const char* message, int x, int y, SDL_Color color);
 SDL_Texture* getNextFrame(VideoState &video, SDL_Renderer* renderer);
 void handleEvents(bool& done);
 bool checkWin(Player player);
+void startGameCallback(void* userdata);
 void resetBoard();
 void close();
 
@@ -157,6 +163,13 @@ bool init()
     {
         SDL_Log("Cannot load font!");
     }
+
+    startButton.rect = {200, 350, 200, 50};  // x, y, width, height
+    startButton.color = {0, 128, 255, 255};  // Blue color
+    startButton.pressed = false;
+    startButton.callback = startGameCallback;
+    startButton.userdata = nullptr;
+
     return true;
 }
 
@@ -204,14 +217,20 @@ bool initAudio(VideoState &video)
 
 void render()
 {
+    static SDL_Texture* videoTexture = nullptr;
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
     SDL_RenderClear(renderer);
+    
 
     if (currentScene == SceneState::MAIN_MENU)
     {
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
         SDL_RenderFillRect(renderer, nullptr);
         renderText("Cat Tac Toe", 225, 250, cMagenta);
+        drawButton(renderer, &startButton);
+        renderButtonText("Start", startButton.rect.x + 60, startButton.rect.y, {255, 255, 255, 255}); 
+        videoInitialized = false;
+        audioInitialized = false;  
     }
     else if (currentScene == SceneState::GAME)
     {
@@ -295,9 +314,6 @@ void render()
     }
     else if (currentScene == SceneState::END_SCREEN)
 {
-    static bool videoInitialized = false;
-    static bool audioInitialized = false;
-    static SDL_Texture* videoTexture = nullptr;
     static uint32_t lastFrameTime = SDL_GetTicks();
     static double videoAccumulator = 0.0;
     static double frameDelay = 33.333333333333333; 
@@ -535,7 +551,26 @@ void handleEvents(bool& done)
 
             if (currentScene == SceneState::MAIN_MENU)
             {
-                currentScene = SceneState::GAME;
+                if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN && event.button.button == SDL_BUTTON_LEFT)
+                {
+                    int x = event.button.x;
+                    int y = event.button.y;
+
+                    bool insideButton = (x >= startButton.rect.x &&
+                        x < startButton.rect.x + startButton.rect.w &&
+                        y >= startButton.rect.y &&
+                        y < startButton.rect.y + startButton.rect.h);
+                        if (insideButton)
+                        {
+                            processButtonEvents(&event, &startButton);
+                            cleanupAudio();
+                            videoInitialized = false;
+                        }
+                        else
+                        {
+                            currentScene = SceneState::GAME;
+                        }
+                }
             }
             else if (currentScene == SceneState::GAME)
             {
@@ -632,6 +667,7 @@ void handleEvents(bool& done)
                 }
 
                 videoInitialized = false;
+                audioInitialized = false;
                 currentScene = SceneState::MAIN_MENU;
             }
 
@@ -656,6 +692,12 @@ bool checkWin(Player player)
             (board[0][2] == player && board [1][1] == player &&
             board[2][0] == player);
     
+}
+
+void startGameCallback(void* userdata)
+{
+    (void)userdata;
+    currentScene = SceneState::LEADERBOARD;
 }
 
 void resetBoard()
