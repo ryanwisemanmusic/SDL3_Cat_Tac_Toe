@@ -16,8 +16,8 @@ ifeq ($(UNAME_S), Darwin)
     SDL3_IMAGE_INCLUDE := /opt/homebrew/Cellar/sdl3_image/3.2.4/include
     SDL3_IMAGE_LIB := /opt/homebrew/Cellar/sdl3_image/3.2.4/lib
     #Third-party SDL3 Paths 
-    SDL3_TTF_INCLUDE := /usr/local/include/SDL3_ttf
-    SDL3_TTF_LIB := /usr/local/lib
+    SDL3_TTF_INCLUDE := /opt/homebrew/Cellar/sdl3_ttf/3.2.0/include
+    SDL3_TTF_LIB := /opt/homebrew/Cellar/sdl3_ttf/3.2.0/lib
     SDL3_MIXER_INCLUDE := /usr/local/include/SDL3_mixer
     SDL3_MIXER_LIB := /usr/local/lib
     #SQLite Paths
@@ -106,42 +106,85 @@ OBJ_CPP = $(SRC_CPP:.cpp=.o)
 OBJ_OBJC = $(SRC_OBJC:.mm=.o)
 OBJS = $(OBJ_CPP) $(OBJ_OBJC)
 
-# Binary target: build the executable binary
-binary: $(OBJS)
-	$(CXX) $(CXXFLAGS) $^ $(LIB_FLAGS) -o $(TARGET)
+# ------------------------------------------------------------------------------
+# Ensure database directory and database file
+# ------------------------------------------------------------------------------
+database/scoresDatabase.db:
+	@mkdir -p database
+	@test -f database/scoresDatabase.db || touch database/scoresDatabase.db
+
+# ------------------------------------------------------------------------------
+# Build Targets
+# ------------------------------------------------------------------------------
+# The binary depends on object files (compiled .cpp/.mm) AND the DB (order-only)
+binary: $(OBJS) | database/scoresDatabase.db
+	@echo "DEBUG: Building executable $(TARGET) with the following object files:" 
+	@echo $(OBJS)
+	$(CXX) $(CXXFLAGS) $(OBJS) $(LIB_FLAGS) -o $(TARGET)
+	@echo "DEBUG: Executable $(TARGET) built successfully."
 
 all: binary
 
-# Existing build rules
+# ------------------------------------------------------------------------------
+# Compilation Rules
+# ------------------------------------------------------------------------------
 src/cpp/%.o: src/cpp/%.cpp
+	@echo "DEBUG: Compiling $< ..."
 	$(CXX) $(CXXFLAGS) $(HEADER) -c $< -o $@
 
 database/%.o: database/%.cpp
+	@echo "DEBUG: Compiling $< ..."
 	$(CXX) $(CXXFLAGS) $(HEADER) -c $< -o $@
 
 src/objc/%.o: src/objc/%.mm
+	@echo "DEBUG: Compiling $< ..."
 	$(CXX) $(OBJCPPFLAGS) $(HEADER) -c $< -o $@
 
-# Utilities
+# ------------------------------------------------------------------------------
+# Utility Targets
+# ------------------------------------------------------------------------------
 run: binary
+	@echo "DEBUG: Running executable $(TARGET)..."
 	$(EXPORT_LIB_PATH) && ./$(TARGET)
 
 clean:
+	@echo "DEBUG: Cleaning build artifacts..."
 	rm -f $(OBJS) $(TARGET)
 	rm -rf AtaraxiaSDK.app
 
-# Bundle target: creates the .app bundle.
+# ------------------------------------------------------------------------------
+# Bundle Target (macOS .app creation)
+# ------------------------------------------------------------------------------
 bundle: binary
-	@echo "Creating app bundle..."
+	@echo "DEBUG: Starting bundle creation..."
 	@rm -rf AtaraxiaSDK.app
 	@mkdir -p AtaraxiaSDK.app/Contents/MacOS
 	@mkdir -p AtaraxiaSDK.app/Contents/Frameworks
 	@mkdir -p AtaraxiaSDK.app/Contents/Resources
+
+	# Copy the executable
+	@echo "DEBUG: Copying executable to bundle..."
 	@cp $(TARGET) AtaraxiaSDK.app/Contents/MacOS/
-	@echo "Copying assets to Resources directory..."
+
+	# Copy the database
+	@echo "DEBUG: Copying database file to bundle Resources..."
+	@cp -f database/scoresDatabase.db AtaraxiaSDK.app/Contents/Resources/ || true
+
+	# Copy assets folder (which should include fonts, audio, video, images, etc.)
+	@echo "DEBUG: Copying assets folder to bundle Resources..."
 	@mkdir -p AtaraxiaSDK.app/Contents/Resources/assets
-	@cp -R assets/* AtaraxiaSDK.app/Contents/Resources/assets/
-	@echo "Creating Info.plist..."
+	@cp -R assets/* AtaraxiaSDK.app/Contents/Resources/assets/ 2>/dev/null || true
+
+	# DEBUG: Check for font file in assets/fonts
+	@echo "DEBUG: Checking for font file assets/fonts/ArianaVioleta.ttf..."
+	@if [ -f assets/fonts/ArianaVioleta.ttf ]; then \
+	    echo "DEBUG: Font file found."; \
+	else \
+	    echo "DEBUG: ERROR: Font file NOT found!"; \
+	fi
+
+	# Create the Info.plist
+	@echo "DEBUG: Creating Info.plist..."
 	@echo '<?xml version="1.0" encoding="UTF-8"?>' > AtaraxiaSDK.app/Contents/Info.plist
 	@echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' >> AtaraxiaSDK.app/Contents/Info.plist
 	@echo '<plist version="1.0">' >> AtaraxiaSDK.app/Contents/Info.plist
@@ -156,7 +199,8 @@ bundle: binary
 	@echo '    <string>APPL</string>' >> AtaraxiaSDK.app/Contents/Info.plist
 	@echo '</dict>' >> AtaraxiaSDK.app/Contents/Info.plist
 	@echo '</plist>' >> AtaraxiaSDK.app/Contents/Info.plist
-	@echo "Updating executable rpath and library references..."
+
+	@echo "DEBUG: Updating executable rpath and library references..."
 	@install_name_tool -add_rpath "@executable_path/../Frameworks" AtaraxiaSDK.app/Contents/MacOS/$(TARGET)
 	@install_name_tool -change /usr/local/lib/libSDL3.0.dylib "@executable_path/../Frameworks/libSDL3.0.dylib" AtaraxiaSDK.app/Contents/MacOS/$(TARGET)
 	@install_name_tool -change /usr/local/lib/libSDL3_image.0.dylib "@executable_path/../Frameworks/libSDL3_image.0.dylib" AtaraxiaSDK.app/Contents/MacOS/$(TARGET)
@@ -168,46 +212,46 @@ bundle: binary
 	@install_name_tool -change /usr/local/lib/libswscale.8.dylib "@executable_path/../Frameworks/libswscale.8.dylib" AtaraxiaSDK.app/Contents/MacOS/$(TARGET)
 	@install_name_tool -change /usr/local/lib/libswresample.5.dylib "@executable_path/../Frameworks/libswresample.5.dylib" AtaraxiaSDK.app/Contents/MacOS/$(TARGET)
 	@install_name_tool -change /usr/local/lib/libSDL3_mixer.0.dylib "@executable_path/../Frameworks/libSDL3_mixer.0.dylib" AtaraxiaSDK.app/Contents/MacOS/$(TARGET)
-	@echo "Copying required libraries into bundle..."
-	@cp $(SDL3_LIB)/libSDL3.0.dylib AtaraxiaSDK.app/Contents/Frameworks/libSDL3.0.dylib
-	@cp $(SDL3_IMAGE_LIB)/libSDL3_image.0.dylib AtaraxiaSDK.app/Contents/Frameworks/libSDL3_image.0.dylib
-	@cp $(SQLITE_LIB)/libsqlite3.dylib AtaraxiaSDK.app/Contents/Frameworks/libsqlite3.dylib
-	@cp $(FFMPEG_LIB)/libavcodec.61.dylib AtaraxiaSDK.app/Contents/Frameworks/libavcodec.61.dylib
-	@cp $(FFMPEG_LIB)/libavformat.61.dylib AtaraxiaSDK.app/Contents/Frameworks/libavformat.61.dylib
-	@cp $(FFMPEG_LIB)/libavutil.59.dylib AtaraxiaSDK.app/Contents/Frameworks/libavutil.59.dylib
-	@cp $(FFMPEG_LIB)/libswscale.8.dylib AtaraxiaSDK.app/Contents/Frameworks/libswscale.8.dylib
-	@cp $(FFMPEG_LIB)/libswresample.5.dylib AtaraxiaSDK.app/Contents/Frameworks/libswresample.5.dylib
-	@cp $(SDL3_TTF_LIB)/libSDL3_ttf.0.dylib AtaraxiaSDK.app/Contents/Frameworks/libSDL3_ttf.0.dylib
-	@cp $(SDL3_MIXER_LIB)/libSDL3_mixer.0.dylib AtaraxiaSDK.app/Contents/Frameworks/libSDL3_mixer.0.dylib
-	@echo "Fixing library dependencies inside frameworks..."
-	@install_name_tool -id "@executable_path/../Frameworks/libSDL3.0.dylib" AtaraxiaSDK.app/Contents/Frameworks/libSDL3.0.dylib
-	@install_name_tool -id "@executable_path/../Frameworks/libSDL3_image.0.dylib" AtaraxiaSDK.app/Contents/Frameworks/libSDL3_image.0.dylib
-	@install_name_tool -id "@executable_path/../Frameworks/libSDL3_ttf.0.dylib" AtaraxiaSDK.app/Contents/Frameworks/libSDL3_ttf.0.dylib
-	@install_name_tool -id "@executable_path/../Frameworks/libsqlite3.dylib" AtaraxiaSDK.app/Contents/Frameworks/libsqlite3.dylib
-	@install_name_tool -id "@executable_path/../Frameworks/libavcodec.61.dylib" AtaraxiaSDK.app/Contents/Frameworks/libavcodec.61.dylib
-	@install_name_tool -id "@executable_path/../Frameworks/libavformat.61.dylib" AtaraxiaSDK.app/Contents/Frameworks/libavformat.61.dylib
-	@install_name_tool -id "@executable_path/../Frameworks/libavutil.59.dylib" AtaraxiaSDK.app/Contents/Frameworks/libavutil.59.dylib
-	@install_name_tool -id "@executable_path/../Frameworks/libswscale.8.dylib" AtaraxiaSDK.app/Contents/Frameworks/libswscale.8.dylib
-	@install_name_tool -id "@executable_path/../Frameworks/libswresample.5.dylib" AtaraxiaSDK.app/Contents/Frameworks/libswresample.5.dylib
-	@install_name_tool -id "@executable_path/../Frameworks/libSDL3_mixer.0.dylib" AtaraxiaSDK.app/Contents/Frameworks/libSDL3_mixer.0.dylib
-	@install_name_tool -change /opt/homebrew/opt/sdl3/lib/libSDL3.0.dylib "@executable_path/../Frameworks/libSDL3.0.dylib" AtaraxiaSDK.app/Contents/Frameworks/libSDL3_image.0.dylib
-	@install_name_tool -change /usr/local/lib/libSDL3_ttf.0.dylib "@executable_path/../Frameworks/libSDL3_ttf.0.dylib" AtaraxiaSDK.app/Contents/MacOS/$(TARGET)
-	@install_name_tool -change /opt/homebrew/opt/sdl3/lib/libSDL3.0.dylib "@executable_path/../Frameworks/libSDL3.0.dylib" AtaraxiaSDK.app/Contents/Frameworks/libSDL3_mixer.0.dylib
-	@echo "Copying database to Resources directory..."
-	@cp -f scoresDatabase.db AtaraxiaSDK.app/Contents/Resources/ || true
 
-# Sign target: signs the .app bundle.
+	@echo "DEBUG: Copying required libraries into bundle..."
+	@cp $(SDL3_LIB)/libSDL3.0.dylib AtaraxiaSDK.app/Contents/Frameworks/libSDL3.0.dylib || cp /usr/local/lib/libSDL3.0.dylib AtaraxiaSDK.app/Contents/Frameworks/libSDL3.0.dylib
+	@cp $(SDL3_IMAGE_LIB)/libSDL3_image.0.dylib AtaraxiaSDK.app/Contents/Frameworks/libSDL3_image.0.dylib || cp /usr/local/lib/libSDL3_image.0.dylib AtaraxiaSDK.app/Contents/Frameworks/libSDL3_image.0.dylib
+	@cp /usr/local/lib/libSDL3_ttf.0.dylib AtaraxiaSDK.app/Contents/Frameworks/
+	@cp /usr/local/lib/libSDL3_mixer.0.dylib AtaraxiaSDK.app/Contents/Frameworks/
+	@cp $(SQLITE_LIB)/libsqlite3.dylib AtaraxiaSDK.app/Contents/Frameworks/libsqlite3.dylib || cp /usr/local/lib/libsqlite3.dylib AtaraxiaSDK.app/Contents/Frameworks/libsqlite3.dylib@cp $(SDL3_TTF_LIB)/libSDL3_ttf.0.dylib AtaraxiaSDK.app/Contents/Frameworks/libSDL3_ttf.0.dylib || cp /usr/local/lib/libSDL3_ttf.0.dylib AtaraxiaSDK.app/Contents/Frameworks/libSDL3_ttf.0.dylib
+	@cp $(FFMPEG_LIB)/libavcodec.61.dylib AtaraxiaSDK.app/Contents/Frameworks/libavcodec.61.dylib || cp /usr/local/lib/libavcodec.61.dylib AtaraxiaSDK.app/Contents/Frameworks/libavcodec.61.dylib
+	@cp $(FFMPEG_LIB)/libavformat.61.dylib AtaraxiaSDK.app/Contents/Frameworks/libavformat.61.dylib || cp /usr/local/lib/libavformat.61.dylib AtaraxiaSDK.app/Contents/Frameworks/libavformat.61.dylib
+	@cp $(FFMPEG_LIB)/libavutil.59.dylib AtaraxiaSDK.app/Contents/Frameworks/libavutil.59.dylib || cp /usr/local/lib/libavutil.59.dylib AtaraxiaSDK.app/Contents/Frameworks/libavutil.59.dylib
+	@cp $(FFMPEG_LIB)/libswscale.8.dylib AtaraxiaSDK.app/Contents/Frameworks/libswscale.8.dylib || cp /usr/local/lib/libswscale.8.dylib AtaraxiaSDK.app/Contents/Frameworks/libswscale.8.dylib
+	@cp $(FFMPEG_LIB)/libswresample.5.dylib AtaraxiaSDK.app/Contents/Frameworks/libswresample.5.dylib || cp /usr/local/lib/libswresample.5.dylib AtaraxiaSDK.app/Contents/Frameworks/libswresample.5.dylib
+	@cp $(SDL3_MIXER_LIB)/libSDL3_mixer.0.dylib AtaraxiaSDK.app/Contents/Frameworks/libSDL3_mixer.0.dylib || cp /usr/local/lib/libSDL3_mixer.0.dylib AtaraxiaSDK.app/Contents/Frameworks/libSDL3_mixer.0.dylib
+
+	@echo "DEBUG: Finished bundling resources."
+
+# ------------------------------------------------------------------------------
+# Sign the app
+# ------------------------------------------------------------------------------
 sign: bundle
-	@echo "Signing app bundle..."
+	@echo "DEBUG: Signing app bundle..."
 	@codesign -s - --deep --force --verbose AtaraxiaSDK.app
 
-# App target: builds, bundles, and signs the app.
-# This target is phony so that typing "make AtaraxiaSDK" will build the complete app package.
-.PHONY: AtaraxiaSDK
-AtaraxiaSDK: sign
-	@echo "App package created: AtaraxiaSDK.app"
+# ------------------------------------------------------------------------------
+# Web Build Target: run build_web.sh via bash
+# ------------------------------------------------------------------------------
+web-build:
+	@echo "DEBUG: Running build_web.sh for web build..."
+	@bash ./build_web.sh
 
-# Autodetect platform and run the corresponding build script
+# ------------------------------------------------------------------------------
+# Full App Build (Phony) including web build
+# ------------------------------------------------------------------------------
+.PHONY: AtaraxiaSDK
+AtaraxiaSDK: sign web-build
+	@echo "DEBUG: App package created: AtaraxiaSDK.app and web build generated."
+
+# ------------------------------------------------------------------------------
+# Cross-Platform Build Script (Optional)
+# ------------------------------------------------------------------------------
 platform-build:
 ifeq ($(UNAME_S), Darwin)
 	$(info Running macOS build script)
@@ -222,4 +266,4 @@ else
 	$(error Unsupported platform)
 endif
 
-.PHONY: all clean run platform-build
+.PHONY: all clean run platform-build web-build

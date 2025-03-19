@@ -123,11 +123,7 @@ bool init() {
         return false;
     }
 
-    #ifdef __APPLE__
-    std::string fontPath = "../Resources/assets/fonts/ArianaVioleta.ttf";
-    #else
     std::string fontPath = "assets/fonts/ArianaVioleta.ttf";
-    #endif
     font = TTF_OpenFont(fontPath.c_str(), 50);
     if (!font) {
         SDL_Log("Cannot load font!");
@@ -403,6 +399,7 @@ SDL_Texture* getNextFrame(VideoState &video, SDL_Renderer* renderer) {
                 for (int y = 0; y < height; y++) {
                     memcpy(dstData + y * dstPitch, srcData + y * srcPitch, width);
                 }
+                // Convert Surface to Texture
                 SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
                 SDL_DestroySurface(surface);
                 av_frame_free(&frame);
@@ -427,12 +424,14 @@ void handleEvents(bool& done) {
             int y = event.button.y;
 
             if (currentScene == SceneState::MAIN_MENU) {
+                // Transition from MAIN_MENU to GAME
                 cleanupAudio();
                 audioInitialized = false;
                 videoInitialized = false;
                 currentScene = SceneState::GAME;
             }
             else if (currentScene == SceneState::GAME) {
+                // If user clicks in the top-left corner, switch to END_SCREEN
                 if (x < 50 && y < 50) {
                     cleanupAudio();
                     audioInitialized = false;
@@ -474,6 +473,7 @@ void handleEvents(bool& done) {
                 }
             }
             else if (currentScene == SceneState::END_SCREEN) {
+                // Reset for returning to MAIN_MENU
                 player1WinCount = 0;
                 player2WinCount = 0;
                 cleanupAudio();
