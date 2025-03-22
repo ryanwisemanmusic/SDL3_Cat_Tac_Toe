@@ -12,7 +12,6 @@ SDL3_IMAGE_INCLUDE := /opt/homebrew/Cellar/sdl3_image/3.2.4/include
 SDL3_IMAGE_LIB := /opt/homebrew/Cellar/sdl3_image/3.2.4/lib
 SDL3_TTF_INCLUDE := /opt/homebrew/Cellar/sdl3_ttf/3.2.0/include
 SDL3_TTF_LIB := /opt/homebrew/Cellar/sdl3_ttf/3.2.0/lib
-# SDL3_MIXER paths look correct but verify they exist
 SDL3_MIXER_INCLUDE := /usr/local/include/SDL3_mixer
 SDL3_MIXER_LIB := /usr/local/lib
 
@@ -105,10 +104,12 @@ bundle: $(TARGET) $(ENTITLEMENTS)
 		mkdir -p $(TARGET).app/Contents/Resources/assets/fonts; \
 		mkdir -p $(TARGET).app/Contents/Resources/assets/video; \
 		mkdir -p $(TARGET).app/Contents/Resources/assets/audio; \
+		mkdir -p $(TARGET).app/Contents/Resources/assets/images; \
 		cp -Rv assets/* $(TARGET).app/Contents/Resources/assets/; \
 		ls -la $(TARGET).app/Contents/Resources/assets/fonts/; \
 		ls -la $(TARGET).app/Contents/Resources/assets/video/ || echo "WARNING: Video directory may be empty"; \
 		ls -la $(TARGET).app/Contents/Resources/assets/audio/ || echo "WARNING: Audio directory may be empty"; \
+		ls -la $(TARGET).app/Contents/Resources/assets/images/ || echo "WARNING: Images directory may be empty"; \
 	else \
 		echo "WARNING: Assets directory not found!"; \
 	fi
@@ -118,6 +119,7 @@ bundle: $(TARGET) $(ENTITLEMENTS)
 		mkdir -p $(TARGET).app/Contents/MacOS/assets/fonts; \
 		mkdir -p $(TARGET).app/Contents/MacOS/assets/video; \
 		mkdir -p $(TARGET).app/Contents/MacOS/assets/audio; \
+		mkdir -p $(TARGET).app/Contents/MacOS/assets/images; \
 		cp -Rv assets/* $(TARGET).app/Contents/MacOS/assets/; \
 	fi
 	
@@ -134,6 +136,8 @@ bundle: $(TARGET) $(ENTITLEMENTS)
 	@echo '    <string>Cat Tac Toe</string>' >> $(TARGET).app/Contents/Info.plist
 	@echo '    <key>CFBundleDisplayName</key>' >> $(TARGET).app/Contents/Info.plist
 	@echo '    <string>Cat Tac Toe</string>' >> $(TARGET).app/Contents/Info.plist
+	@echo '    <key>CFBundleIconFile</key>' >> $(TARGET).app/Contents/Info.plist
+	@echo '    <string>CatTacToe.icns</string>' >> $(TARGET).app/Contents/Info.plist
 	@echo '    <key>CFBundlePackageType</key>' >> $(TARGET).app/Contents/Info.plist
 	@echo '    <string>APPL</string>' >> $(TARGET).app/Contents/Info.plist
 	@echo '    <key>CFBundleVersion</key>' >> $(TARGET).app/Contents/Info.plist
@@ -168,6 +172,17 @@ bundle: $(TARGET) $(ENTITLEMENTS)
 	@echo "DEBUG: Library dependencies for SDL3_ttf:"
 	@otool -L $(TARGET).app/Contents/Frameworks/libSDL3_ttf.0.dylib
 	
+	@echo "DEBUG: Creating app icon..."
+	@mkdir -p iconset.iconset
+	@for size in 16 32 128 256 512; do \
+		echo "Creating $${size}x$${size} icons..."; \
+		sips -z $$size $$size assets/images/icon.png --out iconset.iconset/icon_$${size}x$${size}.png || exit 1; \
+		sips -z $$(($$size * 2)) $$(($$size * 2)) assets/images/icon.png --out iconset.iconset/icon_$${size}x$${size}@2x.png || exit 1; \
+	done
+	@iconutil -c icns iconset.iconset -o $(TARGET).app/Contents/Resources/CatTacToe.icns || (echo "ERROR: iconutil failed"; exit 1)
+	@rm -rf iconset.iconset
+	@chmod 644 $(TARGET).app/Contents/Resources/CatTacToe.icns
+	
 	@echo "DEBUG: Signing with entitlements..."
 	@codesign --force --options runtime --entitlements $(ENTITLEMENTS) --sign - $(TARGET).app/Contents/Frameworks/*.dylib || echo "WARNING: Failed to sign frameworks"
 	@codesign --force --options runtime --entitlements $(ENTITLEMENTS) --sign - $(TARGET).app/Contents/MacOS/$(TARGET) || echo "WARNING: Failed to sign executable"
@@ -176,6 +191,18 @@ bundle: $(TARGET) $(ENTITLEMENTS)
 	@codesign --force --options runtime --entitlements $(ENTITLEMENTS) --deep --sign - $(TARGET).app || echo "WARNING: Failed to sign app bundle, but continuing anyway"
 	@echo "DEBUG: Bundle created at $(TARGET).app"
 	@echo "DEBUG: Error logs will be written to ~/Desktop/$(TARGET)_error.log"
+	@echo "DEBUG: Refreshing icon cache..."
+	@sudo rm -rf /Library/Caches/com.apple.iconservices.store || echo "WARNING: Failed to clear icon cache (requires sudo)"
+	@sudo killall Finder || echo "WARNING: Failed to restart Finder (requires sudo)"
+	@touch $(TARGET).app
+	@echo "DEBUG: Icon cache cleared and app bundle refreshed."
+
+refresh-icon:
+	@echo "DEBUG: Refreshing icon cache..."
+	@sudo rm -rf /Library/Caches/com.apple.iconservices.store || echo "WARNING: Failed to clear icon cache (requires sudo)"
+	@sudo killall Finder || echo "WARNING: Failed to restart Finder (requires sudo)"
+	@touch $(TARGET).app
+	@echo "DEBUG: Icon cache cleared and app bundle refreshed."
 
 %.o: %.cpp
 	@echo "DEBUG: Compiling $< ..."
@@ -196,6 +223,6 @@ run: $(TARGET)
 clean:
 	@echo "DEBUG: Cleaning..."
 	rm -f $(OBJS) $(TARGET) $(ENTITLEMENTS)
-	rm -rf $(TARGET).app
+	rm -rf $(TARGET).app iconset.iconset
 
-.PHONY: all clean run bundle
+.PHONY: all clean run bundle refresh-icon
