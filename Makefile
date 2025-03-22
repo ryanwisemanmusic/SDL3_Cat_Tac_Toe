@@ -83,11 +83,9 @@ bundle: $(TARGET) $(ENTITLEMENTS)
 	@rm -rf $(TARGET).app
 	@mkdir -p $(TARGET).app/Contents/{MacOS,Resources,Frameworks}
 	
-	# Copy executable
 	@echo "DEBUG: Copying executable..."
 	@install -m 0755 $(TARGET) $(TARGET).app/Contents/MacOS/
 	
-	# Create a more robust launcher script
 	@echo "DEBUG: Creating launcher script..."
 	@echo "#!/bin/bash" > $(TARGET).app/Contents/MacOS/$(TARGET)_launcher
 	@echo "# Get the directory where this script is located" >> $(TARGET).app/Contents/MacOS/$(TARGET)_launcher
@@ -101,7 +99,6 @@ bundle: $(TARGET) $(ENTITLEMENTS)
 	@echo "\"\$$SCRIPT_DIR/$(TARGET)\" 2>&1 | tee -a \"\$$HOME/Desktop/$(TARGET)_error.log\"" >> $(TARGET).app/Contents/MacOS/$(TARGET)_launcher
 	@chmod +x $(TARGET).app/Contents/MacOS/$(TARGET)_launcher
 	
-	# Copy assets with better debugging
 	@echo "DEBUG: Copying assets..."
 	@if [ -d "assets" ]; then \
 		echo "DEBUG: Assets directory found, copying..."; \
@@ -116,7 +113,6 @@ bundle: $(TARGET) $(ENTITLEMENTS)
 		echo "WARNING: Assets directory not found!"; \
 	fi
 	
-	# Also copy assets to the MacOS directory as fallback
 	@if [ -d "assets" ]; then \
 		echo "DEBUG: Also copying assets to MacOS directory..."; \
 		mkdir -p $(TARGET).app/Contents/MacOS/assets/fonts; \
@@ -125,7 +121,6 @@ bundle: $(TARGET) $(ENTITLEMENTS)
 		cp -Rv assets/* $(TARGET).app/Contents/MacOS/assets/; \
 	fi
 	
-	# Create Info.plist
 	@echo "DEBUG: Creating Info.plist..."
 	@echo '<?xml version="1.0" encoding="UTF-8"?>' > $(TARGET).app/Contents/Info.plist
 	@echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' >> $(TARGET).app/Contents/Info.plist
@@ -148,14 +143,12 @@ bundle: $(TARGET) $(ENTITLEMENTS)
 	@echo '</dict>' >> $(TARGET).app/Contents/Info.plist
 	@echo '</plist>' >> $(TARGET).app/Contents/Info.plist
 	
-	# Copy libraries - use exact filenames
 	@echo "DEBUG: Copying libraries..."
 	@cp -f $(SDL3_LIB)/libSDL3.0.dylib $(TARGET).app/Contents/Frameworks/ || echo "WARNING: Could not copy libSDL3.0.dylib"
 	@cp -f $(SDL3_IMAGE_LIB)/libSDL3_image.0.dylib $(TARGET).app/Contents/Frameworks/ || echo "WARNING: Could not copy libSDL3_image.0.dylib"
 	@cp -f $(SDL3_TTF_LIB)/libSDL3_ttf.0.dylib $(TARGET).app/Contents/Frameworks/ || echo "WARNING: Could not copy libSDL3_ttf.0.dylib"
 	@chmod 755 $(TARGET).app/Contents/Frameworks/*.dylib
 	
-	# Fix library paths - more comprehensive approach
 	@echo "DEBUG: Updating library references..."
 	@install_name_tool -id @executable_path/../Frameworks/libSDL3.0.dylib $(TARGET).app/Contents/Frameworks/libSDL3.0.dylib
 	@install_name_tool -id @executable_path/../Frameworks/libSDL3_image.0.dylib $(TARGET).app/Contents/Frameworks/libSDL3_image.0.dylib
@@ -165,11 +158,9 @@ bundle: $(TARGET) $(ENTITLEMENTS)
 	@install_name_tool -change /opt/homebrew/opt/sdl3_image/lib/libSDL3_image.0.dylib @executable_path/../Frameworks/libSDL3_image.0.dylib $(TARGET).app/Contents/MacOS/$(TARGET)
 	@install_name_tool -change /opt/homebrew/opt/sdl3_ttf/lib/libSDL3_ttf.0.dylib @executable_path/../Frameworks/libSDL3_ttf.0.dylib $(TARGET).app/Contents/MacOS/$(TARGET)
 	
-	# Fix dependencies between libraries
 	@install_name_tool -change /opt/homebrew/opt/sdl3/lib/libSDL3.0.dylib @executable_path/../Frameworks/libSDL3.0.dylib $(TARGET).app/Contents/Frameworks/libSDL3_image.0.dylib
 	@install_name_tool -change /opt/homebrew/opt/sdl3/lib/libSDL3.0.dylib @executable_path/../Frameworks/libSDL3.0.dylib $(TARGET).app/Contents/Frameworks/libSDL3_ttf.0.dylib
 	
-	# Print library dependencies for debugging
 	@echo "DEBUG: Library dependencies for executable:"
 	@otool -L $(TARGET).app/Contents/MacOS/$(TARGET)
 	@echo "DEBUG: Library dependencies for SDL3_image:"
@@ -177,7 +168,6 @@ bundle: $(TARGET) $(ENTITLEMENTS)
 	@echo "DEBUG: Library dependencies for SDL3_ttf:"
 	@otool -L $(TARGET).app/Contents/Frameworks/libSDL3_ttf.0.dylib
 	
-	# Sign bundle - improved version with better error handling
 	@echo "DEBUG: Signing with entitlements..."
 	@codesign --force --options runtime --entitlements $(ENTITLEMENTS) --sign - $(TARGET).app/Contents/Frameworks/*.dylib || echo "WARNING: Failed to sign frameworks"
 	@codesign --force --options runtime --entitlements $(ENTITLEMENTS) --sign - $(TARGET).app/Contents/MacOS/$(TARGET) || echo "WARNING: Failed to sign executable"
