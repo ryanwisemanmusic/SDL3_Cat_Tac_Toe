@@ -39,10 +39,21 @@ extern "C" void openSDLWindowAboutMenu() {
                                                 backing:NSBackingStoreBuffered
                                                   defer:NO];
     [aboutWindow center];
-    [aboutWindow setTitle:@"Cat Tac Toe"];
+    [aboutWindow setTitle:@"About Cat Tac Toe"];
 
     NSTextView *textView = [[NSTextView alloc] initWithFrame:NSMakeRect(0, 0, 500, 400)];
-    [textView setString:@"Cat Tac Toe Build 0.1.\nWelcome to this game!"];
+    
+    // Create a multi-line string with each test string on its own line
+    NSString *aboutText = @"Cat Tac Toe Build 0.1.\n"
+                          @"Welcome to this game!\n\n"
+                          @"Hi, my name is Ryan Wiseman, I am the developer behind this simple game\n"
+                          @"This was constructed with SDL3 and FFMPEG! A feat that I am very proud of\n\n"
+                          @"One of the ways you can support me is to stream my own music!\n"
+                          @"Outside of developing software, I also write a good amount of music\n"
+                          @"As I continue to progress through various small projects, I hope to someday\n"
+                          @"develop audio plugins that are ones you can pay for and use\n";
+    
+    [textView setString:aboutText];
     [textView setEditable:NO];
     [textView setSelectable:YES];
 
