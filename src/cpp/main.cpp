@@ -110,7 +110,7 @@ bool init()
     TTF_Init();
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 
-    window = SDL_CreateWindow("SDL3 Cat-Tac-Toe", ScreenWidth, ScreenHeight, SDL_WINDOW_OPENGL);
+    window = SDL_CreateWindow("Cat Tac Toe", ScreenWidth, ScreenHeight, SDL_WINDOW_OPENGL);
     if (!window) {
         SDL_Log("Window can't be created! SDL error: %s\n", SDL_GetError());
         SDL_Quit();
