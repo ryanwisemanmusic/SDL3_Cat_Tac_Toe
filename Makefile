@@ -46,7 +46,7 @@ LIB_FLAGS = -L$(SDL3_LIB) -L$(SDL3_IMAGE_LIB) -L$(SDL3_TTF_LIB) -L$(SDL3_MIXER_L
             $(PLATFORM_LIBS)
 
 # Target and sources
-TARGET = AtaraxiaSDK
+TARGET = CatTacToe
 SRC_CPP = src/cpp/main.cpp src/cpp/videoRendering.cpp src/cpp/screenScenes.cpp database/SDLColors.cpp database/gameScores.cpp
 SRC_OBJC = src/objc/cocoaToolbarUI.mm
 
@@ -134,9 +134,11 @@ bundle: $(TARGET) $(ENTITLEMENTS)
 	@echo '    <key>CFBundleExecutable</key>' >> $(TARGET).app/Contents/Info.plist
 	@echo '    <string>$(TARGET)_launcher</string>' >> $(TARGET).app/Contents/Info.plist
 	@echo '    <key>CFBundleIdentifier</key>' >> $(TARGET).app/Contents/Info.plist
-	@echo '    <string>com.example.$(TARGET)</string>' >> $(TARGET).app/Contents/Info.plist
+	@echo '    <string>com.example.CatTacToe</string>' >> $(TARGET).app/Contents/Info.plist
 	@echo '    <key>CFBundleName</key>' >> $(TARGET).app/Contents/Info.plist
-	@echo '    <string>$(TARGET)</string>' >> $(TARGET).app/Contents/Info.plist
+	@echo '    <string>Cat Tac Toe</string>' >> $(TARGET).app/Contents/Info.plist
+	@echo '    <key>CFBundleDisplayName</key>' >> $(TARGET).app/Contents/Info.plist
+	@echo '    <string>Cat Tac Toe</string>' >> $(TARGET).app/Contents/Info.plist
 	@echo '    <key>CFBundlePackageType</key>' >> $(TARGET).app/Contents/Info.plist
 	@echo '    <string>APPL</string>' >> $(TARGET).app/Contents/Info.plist
 	@echo '    <key>CFBundleVersion</key>' >> $(TARGET).app/Contents/Info.plist
