@@ -41,3 +41,4 @@ database/scoresDatabase.db
 *.mp4
 *.wav
 .DS_Store
+*.db
