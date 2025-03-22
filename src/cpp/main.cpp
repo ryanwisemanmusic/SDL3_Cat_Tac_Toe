@@ -105,7 +105,8 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-bool init() {
+bool init() 
+{
     TTF_Init();
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 
