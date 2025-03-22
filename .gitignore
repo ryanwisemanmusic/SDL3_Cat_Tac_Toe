@@ -42,3 +42,4 @@ database/scoresDatabase.db
 *.wav
 .DS_Store
 *.db
+CatTacToe
