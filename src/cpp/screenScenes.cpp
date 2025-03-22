@@ -36,5 +36,3 @@ void handleLeaderboardScreen(SDL_Renderer* renderer, SceneState& currentScene)
     SDL_RenderClear(renderer);
     SDL_RenderPresent(renderer);
 }
-
-

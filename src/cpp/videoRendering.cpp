@@ -18,11 +18,12 @@ extern "C"
     #include <libswresample/swresample.h>
     #include <libavutil/channel_layout.h>
     #include <libswresample/swresample.h>
-#include <SDL3/SDL_oldnames.h>
+    #include <SDL3/SDL_oldnames.h>
 }
 
 #ifndef av_get_default_channel_layout
-static inline __attribute__((unused)) uint64_t av_get_default_channel_layout(int nb_channels) {
+static inline __attribute__((unused)) uint64_t av_get_default_channel_layout(int nb_channels) 
+{
     switch(nb_channels) {
         case 1: return AV_CH_LAYOUT_MONO;
         case 2: return AV_CH_LAYOUT_STEREO;
@@ -103,14 +104,16 @@ bool loadMP4(const std::string &filename, VideoState &video)
     return true;
 }
 
-bool loadAudioFile(const std::string &filename) {
+bool loadAudioFile(const std::string &filename) 
+{
     SDL_AudioSpec wavSpec;
 
     cleanupAudio();
     
     SDL_Log("Attempting to load: %s", filename.c_str());
 
-    if (!SDL_LoadWAV(filename.c_str(), &wavSpec, &audioBuffer, &audioLength)) {
+    if (!SDL_LoadWAV(filename.c_str(), &wavSpec, &audioBuffer, &audioLength)) 
+    {
         SDL_Log("Failed to load WAV file: %s", SDL_GetError());
         return false;
     }
@@ -125,7 +128,8 @@ bool loadAudioFile(const std::string &filename) {
     deviceSpec.channels = wavSpec.channels;
     
     audioDevice = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &deviceSpec);
-    if (!audioDevice) {
+    if (!audioDevice) 
+    {
         SDL_Log("Failed to open audio device: %s", SDL_GetError());
         SDL_free(audioBuffer);
         audioBuffer = nullptr;
@@ -133,7 +137,8 @@ bool loadAudioFile(const std::string &filename) {
     }
     
     audioStream = SDL_CreateAudioStream(&wavSpec, &deviceSpec);
-    if (!audioStream) {
+    if (!audioStream) 
+    {
         SDL_Log("Failed to create audio stream: %s", SDL_GetError());
         SDL_CloseAudioDevice(audioDevice);
         SDL_free(audioBuffer);
@@ -144,7 +149,8 @@ bool loadAudioFile(const std::string &filename) {
     Uint32 MAX_CHUNK_SIZE = 4096;
     Uint32 processedBytes = 0;
     
-    while (processedBytes < audioLength) {
+    while (processedBytes < audioLength) 
+    {
         int chunkSize = (audioLength - processedBytes < MAX_CHUNK_SIZE) ? 
                          audioLength - processedBytes : MAX_CHUNK_SIZE;
         
@@ -152,7 +158,8 @@ bool loadAudioFile(const std::string &filename) {
                                            audioBuffer + processedBytes, 
                                            chunkSize);
         
-        if (result < 0) {
+        if (result < 0) 
+        {
             SDL_Log("Error queueing audio chunk: %s", SDL_GetError());
             SDL_DestroyAudioStream(audioStream);
             audioStream = nullptr;
@@ -170,15 +177,18 @@ bool loadAudioFile(const std::string &filename) {
 }
 
 
-void playAudio() {
+void playAudio() 
+{
     SDL_Log("Inside playAudio() function");
 
-    if (!audioDevice) {
+    if (!audioDevice) 
+    {
         SDL_Log("ERROR: No audio device available");
         return;
     }
     
-    if (!audioStream) {
+    if (!audioStream) 
+    {
         SDL_Log("ERROR: No audio stream available");
         return;
     }
@@ -189,7 +199,8 @@ void playAudio() {
     SDL_Log("Binding audio stream to device %u", audioDevice);
     
     int result = SDL_BindAudioStream(audioDevice, audioStream);
-    if (result != 0) {
+    if (result != 0) 
+    {
         SDL_Log("ERROR: Failed to bind audio stream: %s (Error code: %d)", SDL_GetError(), result);
         return;
     }
@@ -205,19 +216,22 @@ void playSFX()
     std::string audioPath = "assets/audio/blip.wav";
     SDL_Log("Reloading audio file: %s", audioPath.c_str());
 
-    if (!loadAudioFile(audioPath)) {
+    if (!loadAudioFile(audioPath)) 
+    {
         SDL_Log("ERROR: Failed to reload audio file.");
         return;
     }
 
     SDL_Log("Audio file reloaded successfully, playing now...");
 
-    if (!audioDevice) {
+    if (!audioDevice) 
+    {
         SDL_Log("ERROR: No audio device available");
         return;
     }
     
-    if (!audioStream) {
+    if (!audioStream) 
+    {
         SDL_Log("ERROR: No audio stream available");
         return;
     }
@@ -228,7 +242,8 @@ void playSFX()
     SDL_Log("Binding audio stream to device %u", audioDevice);
     
     int result = SDL_BindAudioStream(audioDevice, audioStream);
-    if (result != 0) {
+    if (result != 0) 
+    {
         SDL_Log("ERROR: Failed to bind audio stream: %s (Error code: %d)", SDL_GetError(), result);
         return;
     }
@@ -237,22 +252,26 @@ void playSFX()
     cleanupAudio();
 }
 
-void cleanupAudio() {
+void cleanupAudio() 
+{
     SDL_Log("Cleaning up audio resources");
     
-    if (audioStream) {
+    if (audioStream) 
+    {
         SDL_Log("Destroying audio stream");
         SDL_DestroyAudioStream(audioStream);
         audioStream = nullptr;
     }
 
-    if (audioDevice) {
+    if (audioDevice) 
+    {
         SDL_Log("Closing audio device %u", audioDevice);
         SDL_CloseAudioDevice(audioDevice);
         audioDevice = 0;
     }
 
-    if (audioBuffer) {
+    if (audioBuffer) 
+    {
         SDL_Log("Freeing audio buffer");
         SDL_free(audioBuffer);
         audioBuffer = nullptr;
@@ -261,21 +280,24 @@ void cleanupAudio() {
     SDL_Log("Audio cleanup complete");
 }
 
-bool testAudioPlayback() {
+bool testAudioPlayback() 
+{
     SDL_Log("===== TESTING AUDIO PLAYBACK =====");
     
     std::string audioPath = "assets/video/NeverGonna.wav";
     SDL_Log("Testing audio file: %s", audioPath.c_str());
     
     SDL_IOStream* file = SDL_IOFromFile(audioPath.c_str(), "rb");
-    if (!file) {
+    if (!file) 
+    {
         SDL_Log("TEST FAILED: Audio file not found at: %s", audioPath.c_str());
         return false;
     }
     SDL_CloseIO(file);
     SDL_Log("TEST: File exists");
     
-    if (!loadAudioFile(audioPath)) {
+    if (!loadAudioFile(audioPath)) 
+    {
         SDL_Log("TEST FAILED: Could not load audio file");
         return false;
     }

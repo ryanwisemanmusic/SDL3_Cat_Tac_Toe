@@ -6,6 +6,14 @@ SDL. Because of it, we are required to use Obj-C, particularly,
 the Cocoa library.
 */
 
+/*
+Author: Ryan Wiseman
+
+Macs have a very specific menu call approach that isn't accessible by
+SDL. Because of it, we are required to use Obj-C, particularly, 
+the Cocoa library.
+*/
+
 #ifdef __APPLE__
 #import <Cocoa/Cocoa.h>
 #import "cocoaToolbarHandler.h"
@@ -17,7 +25,8 @@ the Cocoa library.
 
 @implementation AppDelegate
 
-- (IBAction)customAboutAction:(id)sender {
+- (IBAction)customAboutAction:(id)sender 
+{
     NSLog(@"customAboutAction triggered");
     openSDLWindowAboutMenu();
 }
@@ -27,8 +36,10 @@ the Cocoa library.
 static AppDelegate *sharedDelegate = nil;
 static NSWindow *aboutWindow = nil;
 
-extern "C" void openSDLWindowAboutMenu() {
-    if (aboutWindow != nil) {
+extern "C" void openSDLWindowAboutMenu() 
+{
+    if (aboutWindow != nil) 
+    {
         [aboutWindow makeKeyAndOrderFront:nil];
         return;
     }
@@ -65,7 +76,8 @@ extern "C" void openSDLWindowAboutMenu() {
     [aboutWindow makeKeyAndOrderFront:nil];
 }
 
-extern "C" void cocoaBaseMenuBar() {
+extern "C" void cocoaBaseMenuBar() 
+{
     NSApplication *app = [NSApplication sharedApplication];
     
     sharedDelegate = [[AppDelegate alloc] init];
@@ -75,7 +87,6 @@ extern "C" void cocoaBaseMenuBar() {
     NSMenuItem *appMenuItem = [[NSMenuItem alloc] init];
     [menuBar addItem:appMenuItem];
     
-    // Use a constant app name instead of trying to modify the process name
     NSString *appName = @"Cat Tac Toe";
     
     NSMenu *appMenu = [[NSMenu alloc] init];
@@ -95,11 +106,16 @@ extern "C" void cocoaBaseMenuBar() {
     
     [app setMainMenu:menuBar];
 }
+
 #else
 
-extern "C" void openSDLWindowAboutMenu() {
+extern "C" void openSDLWindowAboutMenu() 
+{
+
 }
 
-extern "C" void cocoaBaseMenuBar() {
+extern "C" void cocoaBaseMenuBar() 
+{
+    
 }
 #endif

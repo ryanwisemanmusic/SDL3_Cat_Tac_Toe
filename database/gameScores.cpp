@@ -119,4 +119,3 @@ void DatabaseManager::queryScores()
 
     sqlite3_finalize(stmt);
 }
-

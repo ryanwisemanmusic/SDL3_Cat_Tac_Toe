@@ -10,7 +10,8 @@ void drawButton(SDL_Renderer *renderer, const Button *button)
     SDL_Color prevColor;
     SDL_GetRenderDrawColor(renderer, &prevColor.r, &prevColor.g, &prevColor.b, &prevColor.a);
 
-    SDL_FRect rect = { 
+    SDL_FRect rect = 
+    { 
         static_cast<float>(button->rect.x), 
         static_cast<float>(button->rect.y), 
         static_cast<float>(button->rect.w), 
